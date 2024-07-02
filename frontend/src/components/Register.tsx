@@ -7,6 +7,7 @@ import { IUser } from '../interfaces/IUser';
 const Register: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [email, setEmail] = useState('');
   const [birthday, setBirthday] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -14,6 +15,11 @@ const Register: React.FC = () => {
   const navigate = useNavigate();
 
   const handleRegister = async () => {
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match.');
+      return;
+    }
+
     try {
       const userData: IUser = {
         Username: username,
@@ -42,10 +48,50 @@ const Register: React.FC = () => {
   return (
     <Container maxWidth="xs">
       <Typography variant="h4" gutterBottom>Register</Typography>
-      <TextField label="Username" variant="outlined" fullWidth margin="normal" value={username} onChange={(e) => setUsername(e.target.value)} />
-      <TextField label="Password" type="password" variant="outlined" fullWidth margin="normal" value={password} onChange={(e) => setPassword(e.target.value)} />
-      <TextField label="Email" variant="outlined" fullWidth margin="normal" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <TextField label="Birthday" type="date" variant="outlined" fullWidth margin="normal" InputLabelProps={{ shrink: true }} value={birthday} onChange={(e) => setBirthday(e.target.value)} />
+      <TextField 
+        label="Username" 
+        variant="outlined" 
+        fullWidth 
+        margin="normal" 
+        value={username} 
+        onChange={(e) => setUsername(e.target.value)} 
+      />
+      <TextField 
+        label="Password" 
+        type="password" 
+        variant="outlined" 
+        fullWidth 
+        margin="normal" 
+        value={password} 
+        onChange={(e) => setPassword(e.target.value)} 
+      />
+      <TextField 
+        label="Confirm Password" 
+        type="password" 
+        variant="outlined" 
+        fullWidth 
+        margin="normal" 
+        value={confirmPassword} 
+        onChange={(e) => setConfirmPassword(e.target.value)} 
+      />
+      <TextField 
+        label="Email" 
+        variant="outlined" 
+        fullWidth 
+        margin="normal" 
+        value={email} 
+        onChange={(e) => setEmail(e.target.value)} 
+      />
+      <TextField 
+        label="Birthday" 
+        type="date" 
+        variant="outlined" 
+        fullWidth 
+        margin="normal" 
+        InputLabelProps={{ shrink: true }} 
+        value={birthday} 
+        onChange={(e) => setBirthday(e.target.value)} 
+      />
       {errorMessage && <Typography color="error" variant="subtitle1">{errorMessage}</Typography>}
       {successMessage && <Typography color="primary" variant="subtitle1">{successMessage}</Typography>}
       <Button variant="contained" color="primary" fullWidth onClick={handleRegister}>Register</Button>
