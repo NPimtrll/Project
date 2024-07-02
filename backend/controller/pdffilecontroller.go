@@ -2,45 +2,46 @@ package controller
 
 import (
 	"net/http"
-	"time"
-
-	"github.com/NPimtrll/Project/entity"
+    "path/filepath"
 	"github.com/gin-gonic/gin"
+	"github.com/NPimtrll/Project/entity"
 )
 
-// UploadPDFFile ฟังก์ชันจัดการการอัปโหลดไฟล์ PDF
+// POST /upload_pdf
 func UploadPDFFile(c *gin.Context) {
-	file, err := c.FormFile("pdf")
+	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No file is received"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File upload failed"})
 		return
 	}
 
-	// บันทึกไฟล์ลงในโฟลเดอร์
-	filePath := "uploads/" + file.Filename
-	if err := c.SaveUploadedFile(file, filePath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	filename := filepath.Base(file.Filename)
+	filepath := "./uploads/pdf/" + filename
+
+	if err := c.SaveUploadedFile(file, filepath); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File save failed"})
 		return
 	}
 
-	// สร้าง record สำหรับไฟล์ PDF ในฐานข้อมูล
+	userID := uint(1) // Replace with actual user ID
+
 	pdfFile := entity.PDFFile{
-		Filename:   file.Filename,
-		FilePath:   filePath,
-		UploadDate: time.Now(),
-		Size:       file.Size,
-		Status:     "uploaded",
-		Source:     "uploaded",
+		Filename: filename,
+		FilePath: filepath,
+		Status:   "uploaded",
+		Size:     file.Size,
+		Source:   "uploaded",
+		UserID:   &userID,
 	}
 
 	if err := entity.DB().Create(&pdfFile).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Database save failed"})
 		return
 	}
 
-	// ส่งข้อมูลกลับไปยัง frontend
-	c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully", "file": file.Filename})
+	c.JSON(http.StatusOK, gin.H{"data": pdfFile})
 }
+
 
 // GET /pdf_file/:id
 func GetPDFFile(c *gin.Context) {

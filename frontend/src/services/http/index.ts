@@ -7,6 +7,11 @@ import { IConversion } from "../../interfaces/IConversion";
 
 const apiUrl = "http://localhost:8080";
 
+interface LoginResponse {
+  token: string;
+  user: IUser;
+}
+
 // Audio File CRUD operations
 async function getAudioFiles(): Promise<IAudioFile[]> {
   const response = await fetch(`${apiUrl}/audio-files`);
@@ -210,6 +215,20 @@ async function deleteConversion(id: number): Promise<void> {
   await fetch(`${apiUrl}/conversion/${id}`, { method: "DELETE" });
 }
 
+async function loginUser(credentials: { username: string; password: string }): Promise<LoginResponse> {
+  const response = await fetch(`${apiUrl}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(credentials),
+  });
+
+  if (!response.ok) {
+    throw new Error('Invalid username or password');
+  }
+
+  return response.json();
+}
+
 export {
   getAudioFiles,
   getAudioFileById,
@@ -241,4 +260,5 @@ export {
   createConversion,
   updateConversion,
   deleteConversion,
+  loginUser
 };
