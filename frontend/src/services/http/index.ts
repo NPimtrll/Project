@@ -47,40 +47,39 @@ async function deleteAudioFile(id: number): Promise<void> {
 
 // PDF File CRUD operations
 async function uploadPDF(file: File): Promise<IPDFFile> {
-    const formData = new FormData();
-    formData.append("pdf", file);
-  
-    const requestOptions = {
-      method: "POST",
-      body: formData,
-    };
-  
-    const response = await fetch(`${apiUrl}/upload_pdf`, requestOptions);
-    return response.json();
-  }
-  
-async function getPDFs(): Promise<IPDFFile[]> {
-  const response = await fetch(`${apiUrl}/pdfs`);
+  const formData = new FormData();
+  formData.append("file", file);  // ใช้ชื่อฟิลด์ file ให้สอดคล้องกับ backend
+
+  const requestOptions = {
+    method: "POST",
+    body: formData,
+  };
+
+  const response = await fetch(`${apiUrl}/upload_pdf`, requestOptions);
   return response.json();
+}
+
+async function getPDFs(): Promise<IPDFFile[]> {
+const response = await fetch(`${apiUrl}/pdf_files`);
+return response.json();
 }
 
 async function getPDFById(id: number): Promise<IPDFFile> {
-  const response = await fetch(`${apiUrl}/pdf/${id}`);
-  return response.json();
+const response = await fetch(`${apiUrl}/pdf_file/${id}`);
+return response.json();
 }
 
-
 async function updatePDF(id: number, pdf: IPDFFile): Promise<IPDFFile> {
-  const response = await fetch(`${apiUrl}/pdf/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(pdf),
-  });
-  return response.json();
+const response = await fetch(`${apiUrl}/pdf_file/${id}`, {
+  method: "PATCH",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(pdf),
+});
+return response.json();
 }
 
 async function deletePDF(id: number): Promise<void> {
-  await fetch(`${apiUrl}/pdf/${id}`, { method: "DELETE" });
+await fetch(`${apiUrl}/pdf_file/${id}`, { method: "DELETE" });
 }
 
 // Session CRUD operations

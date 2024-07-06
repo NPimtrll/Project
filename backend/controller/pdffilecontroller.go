@@ -2,52 +2,64 @@ package controller
 
 import (
 	"net/http"
-    "path/filepath"
-	"github.com/gin-gonic/gin"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/NPimtrll/Project/entity"
+	"github.com/gin-gonic/gin"
 )
 
-// POST /upload_pdf
+// UploadPDFFile อัพโหลดไฟล์ PDF
 func UploadPDFFile(c *gin.Context) {
 	file, err := c.FormFile("file")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File upload failed"})
+
+	// ตรวจสอบว่ามีไฟล์หรือไม่
+	if err != nil || file == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No file is received"})
 		return
 	}
 
+	// สร้าง path ที่จะเก็บไฟล์
 	filename := filepath.Base(file.Filename)
-	filepath := "./uploads/pdf/" + filename
+	path := filepath.Join("uploads", filename)
 
-	if err := c.SaveUploadedFile(file, filepath); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File save failed"})
+	// ตรวจสอบว่ามีโฟลเดอร์หรือไม่ ถ้าไม่มีให้สร้างขึ้นมา
+	if err := os.MkdirAll("uploads", os.ModePerm); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot create directory"})
 		return
 	}
 
-	userID := uint(1) // Replace with actual user ID
-
-	pdfFile := entity.PDFFile{
-		Filename: filename,
-		FilePath: filepath,
-		Status:   "uploaded",
-		Size:     file.Size,
-		Source:   "uploaded",
-		UserID:   &userID,
-	}
-
-	if err := entity.DB().Create(&pdfFile).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Database save failed"})
+	// บันทึกไฟล์
+	if err := c.SaveUploadedFile(file, path); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot save file"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": pdfFile})
+	// สร้างข้อมูลไฟล์ที่จะเก็บในฐานข้อมูล
+	pdf := entity.PDFFile{
+		Filename:   filename,
+		FilePath:   path,
+		UploadDate: time.Now(),
+		Size:       file.Size,
+		Status:     "uploaded",
+	}
+
+	// บันทึกข้อมูลลงฐานข้อมูล
+	if err := entity.DB().Create(&pdf).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot save file information"})
+		return
+	}
+
+	// ตอบกลับ
+	c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully", "pdf": pdf})
 }
-
 
 // GET /pdf_file/:id
 func GetPDFFile(c *gin.Context) {
 	var pdfFile entity.PDFFile
 	id := c.Param("id")
-	if err := entity.DB().Raw("SELECT * FROM pdf_files WHERE id = ?", id).Scan(&pdfFile).Error; err != nil {
+	if err := entity.DB().First(&pdfFile, id).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -57,7 +69,7 @@ func GetPDFFile(c *gin.Context) {
 // GET /pdf_files
 func ListPDFFiles(c *gin.Context) {
 	var pdfFiles []entity.PDFFile
-	if err := entity.DB().Raw("SELECT * FROM pdf_files").Scan(&pdfFiles).Error; err != nil {
+	if err := entity.DB().Find(&pdfFiles).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -67,7 +79,7 @@ func ListPDFFiles(c *gin.Context) {
 // DELETE /pdf_files/:id
 func DeletePDFFile(c *gin.Context) {
 	id := c.Param("id")
-	if tx := entity.DB().Exec("DELETE FROM pdf_files WHERE id = ?", id); tx.RowsAffected == 0 {
+	if tx := entity.DB().Delete(&entity.PDFFile{}, id); tx.RowsAffected == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "pdf file not found"})
 		return
 	}
