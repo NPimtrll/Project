@@ -18,12 +18,13 @@ const Login: React.FC<LoginProps> = ({ setIsLoggedIn }) => {
       const { token, user } = await loginUser({ username, password });
       setIsLoggedIn(true);
       navigate('/home');
-      localStorage.setItem('token', token);
+      localStorage.setItem('authToken', token); // Ensure 'authToken' is the correct key name
       localStorage.setItem('user', JSON.stringify(user));
     } catch (err) {
       setError('Invalid username or password');
     }
   };
+  
 
   return (
     <Container maxWidth="xs">
