@@ -4,36 +4,53 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/NPimtrll/Project/service"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 )
 
-// AuthorizeJWT validates the token user given, returns 401 if not valid
+var jwtKey = []byte("your_secret_key")
+
+type Claims struct {
+	UserID uint `json:"user_id"`
+	jwt.StandardClaims
+}
+
 func AuthorizeJWT() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "authorization header is required"})
-			c.Abort()
-			return
-		}
+		tokenString := c.GetHeader("Authorization")
 
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		if tokenString == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "token is required"})
+			c.Next() // Allow the request to proceed without authentication
+			return
+		}
+
+		parts := strings.Split(tokenString, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token format"})
 			c.Abort()
 			return
 		}
 
-		session, err := service.ValidateToken(tokenString)
+		tokenString = parts[1]
+
+		claims := &Claims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
+
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			c.Abort()
 			return
 		}
 
-		// Save the user information to the context
-		c.Set("session", session)
+		if !token.Valid {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			c.Abort()
+			return
+		}
+
+		c.Set("userID", claims.UserID)
 		c.Next()
 	}
 }

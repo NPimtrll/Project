@@ -36,6 +36,16 @@ func UploadPDFFile(c *gin.Context) {
 		return
 	}
 
+	// ดึง UserID จาก context
+	userID, exists := c.Get("userID")
+	var userIDUint *uint
+	if exists {
+		userIDValue := userID.(uint)
+		userIDUint = &userIDValue
+	} else {
+		userIDUint = nil
+	}
+
 	// สร้างข้อมูลไฟล์ที่จะเก็บในฐานข้อมูล
 	pdf := entity.PDFFile{
 		Filename:   filename,
@@ -43,6 +53,7 @@ func UploadPDFFile(c *gin.Context) {
 		UploadDate: time.Now(),
 		Size:       file.Size,
 		Status:     "uploaded",
+		UserID:     userIDUint, // ใช้ nil ถ้าไม่มี userID
 	}
 
 	// บันทึกข้อมูลลงฐานข้อมูล

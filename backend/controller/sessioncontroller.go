@@ -8,42 +8,58 @@ import (
 	"time"
 
 	"github.com/NPimtrll/Project/entity"
+	"github.com/NPimtrll/Project/middlewares"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
-// POST /login
+var jwtKey = []byte("your_secret_key")
+
+type LoginCredentials struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 func Login(c *gin.Context) {
-	var loginRequest struct {
-		Username string `json:"username" binding:"required"`
-		Password string `json:"password" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&loginRequest); err != nil {
+	var loginCreds LoginCredentials
+	if err := c.ShouldBindJSON(&loginCreds); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	var user entity.User
-	if err := entity.DB().Where("username = ?", loginRequest.Username).First(&user).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username or password"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := entity.DB().Where("username = ?", loginCreds.Username).First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
 	}
 
-	// ตรวจสอบรหัสผ่าน
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginRequest.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username or password"})
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginCreds.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
 	}
 
+	expirationTime := time.Now().Add(24 * time.Hour)
+	claims := &middlewares.Claims{
+		UserID: user.ID,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expirationTime.Unix(),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(jwtKey)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
+		return
+	}
+
+	// สร้าง session
 	session := entity.Session{
-		UserID:       &user.ID, // Use &user.ID to assign to *uint
+		UserID:       &user.ID,
 		LoginTime:    time.Now(),
-		SessionToken: GenerateSessionToken(), // ใช้ฟังก์ชันเพื่อสร้างโทเค็นที่ไม่ซ้ำกัน
+		SessionToken: tokenString,
 	}
 
 	if err := entity.DB().Create(&session).Error; err != nil {
@@ -51,14 +67,9 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// ส่งกลับ token และข้อมูลผู้ใช้
-	c.JSON(http.StatusOK, gin.H{
-		"token": session.SessionToken,
-		"user":  user,
-	})
+	c.JSON(http.StatusOK, gin.H{"token": tokenString})
 }
 
-// POST /sessions
 func CreateSession(c *gin.Context) {
 	var loginRequest struct {
 		Username string `json:"username" binding:"required"`
@@ -82,7 +93,7 @@ func CreateSession(c *gin.Context) {
 	}
 
 	session := entity.Session{
-		UserID:       &user.ID, // Use &user.ID to assign to *uint
+		UserID:       &user.ID,
 		LoginTime:    time.Now(),
 		SessionToken: GenerateSessionToken(), // ใช้ฟังก์ชันเพื่อสร้างโทเค็น
 	}
@@ -95,7 +106,6 @@ func CreateSession(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": session})
 }
 
-// DELETE /sessions/:id
 func DeleteSession(c *gin.Context) {
 	id := c.Param("id")
 
@@ -120,7 +130,6 @@ func DeleteSession(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": id})
 }
 
-// GET /sessions
 func ListSessions(c *gin.Context) {
 	var sessions []entity.Session
 	if err := entity.DB().Find(&sessions).Error; err != nil {
@@ -130,12 +139,11 @@ func ListSessions(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": sessions})
 }
 
-// GenerateSessionToken generates a unique session token
 func GenerateSessionToken() string {
-    token := make([]byte, 32)
-    _, err := rand.Read(token)
-    if err != nil {
-        log.Fatalf("Error generating random token: %v", err)
-    }
-    return base64.URLEncoding.EncodeToString(token)
+	token := make([]byte, 32)
+	_, err := rand.Read(token)
+	if err != nil {
+		log.Fatalf("Error generating random token: %v", err)
+	}
+	return base64.URLEncoding.EncodeToString(token)
 }

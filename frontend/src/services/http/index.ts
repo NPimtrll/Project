@@ -45,19 +45,29 @@ async function deleteAudioFile(id: number): Promise<void> {
   await fetch(`${apiUrl}/audio-file/${id}`, { method: "DELETE" });
 }
 
-// PDF File CRUD operations
-async function uploadPDF(file: File): Promise<IPDFFile> {
-  const formData = new FormData();
-  formData.append("file", file);  // ใช้ชื่อฟิลด์ file ให้สอดคล้องกับ backend
 
-  const requestOptions = {
+async function uploadPDF(file: File): Promise<IPDFFile> {
+  const authToken = localStorage.getItem('authToken'); // Ensure 'authToken' is the correct key name
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const requestOptions: RequestInit = {
     method: "POST",
     body: formData,
+    headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {},
   };
 
   const response = await fetch(`${apiUrl}/upload_pdf`, requestOptions);
+
+  if (!response.ok) {
+    throw new Error('Failed to upload PDF');
+  }
+
   return response.json();
 }
+
+
 
 async function getPDFs(): Promise<IPDFFile[]> {
 const response = await fetch(`${apiUrl}/pdf_files`);
