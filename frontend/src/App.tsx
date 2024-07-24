@@ -5,6 +5,7 @@ import Login from './components/Login';
 import Home from './components/Home';
 import Collection from './components/Collection';
 import Register from './components/Register';
+import TTs from './components/textToSpeechs';
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -18,6 +19,7 @@ const App: React.FC = () => {
         {isLoggedIn && <Route path="/collection" element={<Collection />} />}
         <Route path="/register" element={<Register />} />
         <Route path="*" element={<Home />} />
+        <Route path="/tts" element={<TTs />} />
       </Routes>
     </Router>
   );
