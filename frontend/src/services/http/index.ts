@@ -121,9 +121,15 @@ async function updateSession(id: number, session: ISession): Promise<ISession> {
   return response.json();
 }
 
-async function deleteSession(id: number): Promise<void> {
-  await fetch(`${apiUrl}/session/${id}`, { method: "DELETE" });
+async function deleteSession(token: string): Promise<void> {
+  const requestOptions: RequestInit = {
+    method: "DELETE",
+    headers: { 'Authorization': `Bearer ${token}` }
+  };
+  await fetch(`${apiUrl}/session`, requestOptions);
 }
+
+
 
 // User CRUD operations
 async function getUsers(): Promise<IUser[]> {

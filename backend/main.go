@@ -25,7 +25,8 @@ func main() {
 	// Session routes
 	r.POST("/login", controller.Login)
 	r.GET("/sessions", controller.ListSessions)
-	r.DELETE("/sessions/:id", controller.DeleteSession)
+	r.DELETE("/session", controller.DeleteSession)
+
 
 	// Protected routes
 	protected := r.Group("/")

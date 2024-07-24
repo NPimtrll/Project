@@ -106,11 +106,26 @@ func CreateSession(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": session})
 }
 
+
 func DeleteSession(c *gin.Context) {
-	id := c.Param("id")
+	tokenString := c.GetHeader("Authorization")
+	if tokenString == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "token is required"})
+		return
+	}
+
+	claims := &middlewares.Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+
+	if err != nil || !token.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
 
 	var session entity.Session
-	if err := entity.DB().Where("id = ?", id).First(&session).Error; err != nil {
+	if err := entity.DB().Where("session_token = ?", tokenString).First(&session).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "session not found"})
 			return
@@ -127,7 +142,7 @@ func DeleteSession(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": id})
+	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
 }
 
 func ListSessions(c *gin.Context) {

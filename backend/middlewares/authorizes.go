@@ -20,7 +20,7 @@ func AuthorizeJWT() gin.HandlerFunc {
 		tokenString := c.GetHeader("Authorization")
 
 		if tokenString == "" {
-			c.Next() // Allow the request to proceed without authentication
+			c.Next()
 			return
 		}
 
