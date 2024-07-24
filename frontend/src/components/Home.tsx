@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Button, Typography, CircularProgress, Grid, LinearProgress, Box } from '@mui/material';
 import GetAppIcon from '@mui/icons-material/GetApp';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -11,6 +11,16 @@ const Home: React.FC = () => {
   const [converting, setConverting] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
+
+  useEffect(() => {
+    // รีเซ็ตสถานะเมื่อคอมโพเนนต์ถูกสร้างขึ้น (mounted) หรือรีเฟรชหน้า
+    setSelectedFile(null);
+    setAudioUrl(null);
+    setLoading(false);
+    setConverting(false);
+    setUploadMessage(null);
+    setProgress(0);
+  }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {

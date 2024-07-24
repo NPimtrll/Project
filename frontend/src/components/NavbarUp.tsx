@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography, Button } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
+import { deleteSession } from '../services/http/index'; // import deleteSession function
 
 interface NavbarProps {
   isLoggedIn: boolean;
@@ -10,9 +11,20 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, setIsLoggedIn }) => {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // ลบ token และข้อมูลอื่นๆ จาก local storage
+    const token = localStorage.getItem('token');
+    if (token) {
+      await deleteSession(token);
+    }
+    localStorage.clear(); // ลบข้อมูลทั้งหมดจาก local storage
+
+    // reset state ที่เกี่ยวข้องกับการล็อกอิน
     setIsLoggedIn(false);
+    // นำผู้ใช้ไปยังหน้า home
     navigate('/home');
+    // รีเฟรชหน้า home
+    window.location.reload();
   };
 
   return (
