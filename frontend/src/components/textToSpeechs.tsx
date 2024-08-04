@@ -23,7 +23,7 @@ const Try: React.FC = () => {
     const result = await response.blob();
     return result;
   }
-
+  
   const speechs = async () => {
     query({ inputs: text }).then((response) => {
       const url = window.URL.createObjectURL(response);
