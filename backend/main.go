@@ -1,12 +1,14 @@
 package main
 
 import (
+	"io/ioutil"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/NPimtrll/Project/controller"
 	"github.com/NPimtrll/Project/entity"
 	"github.com/NPimtrll/Project/middlewares"
+	"github.com/NPimtrll/Project/ocr" // import package ocr
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -27,7 +29,6 @@ func main() {
 	r.GET("/sessions", controller.ListSessions)
 	r.DELETE("/session", controller.DeleteSession)
 
-
 	// Protected routes
 	protected := r.Group("/")
 	protected.Use(middlewares.AuthorizeJWT())
@@ -36,7 +37,6 @@ func main() {
 		protected.GET("/pdf_file/:id", controller.GetPDFFile)
 		protected.GET("/pdf_files", controller.ListPDFFiles)
 		protected.DELETE("/pdf_files/:id", controller.DeletePDFFile)
-		protected.PATCH("/pdf_files", controller.UpdatePDFFile)
 
 		protected.POST("/upload_audio", controller.UploadAudioFile) // Endpoint สำหรับอัปโหลด Audio
 		protected.POST("/audio_files", controller.CreateAudioFile)
@@ -60,6 +60,36 @@ func main() {
 
 		protected.GET("/protected_resource", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "This is a protected resource"})
+		})
+
+		protected.POST("/ocr", func(c *gin.Context) {
+			file, _, err := c.Request.FormFile("file") // อ่านไฟล์ PDF จาก form
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get file from request", "details": err.Error()})
+				return
+			}
+			defer file.Close()
+		
+			pdfBytes, err := ioutil.ReadAll(file)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file", "details": err.Error()})
+				return
+			}
+		
+			// Run OCR
+			ocrOutput, err := ocr.RunOCR(pdfBytes)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "OCR processing failed", "details": err.Error()})
+				return
+			}
+			// Run Spell Check
+			// spellCheckedOutput, err := ocr.SpellCheck(ocrOutput)
+			// if err != nil {
+			// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Spell check processing failed", "details": err.Error()})
+			// 	return
+			// }
+		
+			c.JSON(http.StatusOK, gin.H{"ocr_output": ocrOutput})
 		})
 	}
 

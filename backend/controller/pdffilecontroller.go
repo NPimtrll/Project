@@ -1,12 +1,14 @@
 package controller
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/NPimtrll/Project/entity"
+	"github.com/NPimtrll/Project/ocr"
 	"github.com/gin-gonic/gin"
 )
 
@@ -36,6 +38,29 @@ func UploadPDFFile(c *gin.Context) {
 		return
 	}
 
+	// อ่านไฟล์ PDF เป็น bytes
+	fileBytes, err := os.ReadFile(path)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot read file"})
+		return
+	}
+
+	log.Printf("Sending %d bytes to OCR API", len(fileBytes))
+
+	// เรียกใช้ OCR เพื่อแปลง PDF เป็นข้อความ
+	ocrText, err := ocr.RunOCR(fileBytes) // ใช้ฟังก์ชันจาก package ocr
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "OCR processing failed"})
+		return
+	}
+
+	// // เรียกใช้ Spellcheck เพื่อปรับปรุงข้อความ
+	// checkedText, err := ocr.SpellCheck(ocrText) // ใช้ฟังก์ชัน SpellCheck จาก package ocr
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Spellcheck processing failed"})
+	// 	return
+	// }
+
 	// ดึง UserID จาก context
 	userID, exists := c.Get("userID")
 	var userIDUint *uint
@@ -52,8 +77,9 @@ func UploadPDFFile(c *gin.Context) {
 		FilePath:   path,
 		UploadDate: time.Now(),
 		Size:       file.Size,
-		Status:     "uploaded",
-		UserID:     userIDUint, // ใช้ nil ถ้าไม่มี userID
+		Status:     "processed", // เปลี่ยนสถานะเป็น processed หลังจาก OCR เสร็จสิ้น
+		UserID:     userIDUint,
+		Text:       ocrText, // เพิ่มข้อมูลข้อความที่ได้จาก OCR และการตรวจสอบคำ
 	}
 
 	// บันทึกข้อมูลลงฐานข้อมูล
@@ -61,6 +87,73 @@ func UploadPDFFile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot save file information"})
 		return
 	}
+
+	// สร้าง conversion record
+	conversion := entity.Conversion{
+		ConversionDate: time.Now(),
+		Status:         "in_progress",
+		PDFID:          &pdf.ID,
+		UserID:         userIDUint,
+	}
+
+	// // บันทึก conversion record ลงฐานข้อมูล
+	if err := entity.DB().Create(&conversion).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create conversion record"})
+		return
+	}
+
+	// // เริ่มกระบวนการแปลงข้อความเป็นไฟล์เสียง
+	go func() {
+		audioData, err := TextToSpeech(ocrText)
+		if err != nil {
+			conversion.Status = "failed"
+			conversion.ErrorMessage = err.Error()
+			entity.DB().Save(&conversion)
+			return
+		}
+
+		audioFilename := filepath.Base(filename) + ".wav"
+		audioPath := filepath.Join("uploads/audio", audioFilename)
+
+		// สร้างโฟลเดอร์ถ้าไม่มี
+		if err := os.MkdirAll(filepath.Dir(audioPath), os.ModePerm); err != nil {
+			conversion.Status = "failed"
+			conversion.ErrorMessage = err.Error()
+			entity.DB().Save(&conversion)
+			return
+		}
+
+		// บันทึกไฟล์เสียง
+		if err := os.WriteFile(audioPath, audioData, os.ModePerm); err != nil {
+			conversion.Status = "failed"
+			conversion.ErrorMessage = err.Error()
+			entity.DB().Save(&conversion)
+			return
+		}
+
+		// สร้างข้อมูลไฟล์เสียงที่จะเก็บในฐานข้อมูล
+		audioFile := entity.AudioFile{
+			Filename: audioFilename,
+			FilePath: audioPath,
+			Status:   "generated",
+			Size:     int64(len(audioData)),
+			UserID:   userIDUint,
+			PDFID:    &pdf.ID,
+		}
+
+		// บันทึกข้อมูลไฟล์เสียงลงฐานข้อมูล
+		if err := entity.DB().Create(&audioFile).Error; err != nil {
+			conversion.Status = "failed"
+			conversion.ErrorMessage = err.Error()
+			entity.DB().Save(&conversion)
+			return
+		}
+
+		// อัพเดต conversion record กับข้อมูล AudioID
+		conversion.AudioID = &audioFile.ID
+		conversion.Status = "completed"
+		entity.DB().Save(&conversion)
+	}()
 
 	// ตอบกลับ
 	c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully", "pdf": pdf})
@@ -95,22 +188,4 @@ func DeletePDFFile(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": id})
-}
-
-// PATCH /pdf_files
-func UpdatePDFFile(c *gin.Context) {
-	var pdfFile entity.PDFFile
-	if err := c.ShouldBindJSON(&pdfFile); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	if tx := entity.DB().Where("id = ?", pdfFile.ID).First(&pdfFile); tx.RowsAffected == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "pdf file not found"})
-		return
-	}
-	if err := entity.DB().Save(&pdfFile).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"data": pdfFile})
 }

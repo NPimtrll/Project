@@ -1,34 +1,50 @@
 import React, { useState } from 'react';
 import { Container, Button } from '@mui/material';
 import TextField from '@mui/material/TextField';
-import { useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 
 const Try: React.FC = () => {
   const [text, setText] = useState<string>('');
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function query(data: { inputs: string }) {
-    const response = await fetch(
-      "https://api-inference.huggingface.co/models/Nithu/text-to-speech",
-      {
-        headers: {
-          Authorization: "Bearer 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",
-        },
-        method: "POST",
-        body: JSON.stringify(data),
+    try {
+      const response = await fetch(
+        "https://api-inference.huggingface.co/models/Nithu/text-to-speech",
+        {
+          headers: {
+            Authorization: "Bearer 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",
+            "Content-Type": "application/json",
+          },
+          method: "POST",
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error:', errorText);
+        setError('Error: ' + errorText);
+        return null;
       }
-    );
-    const result = await response.blob();
-    return result;
+
+      const result = await response.blob();
+      return result;
+    } catch (error) {
+      console.error('Fetch error:', error);
+      
+      return null;
+    }
   }
   
   const speechs = async () => {
-    query({ inputs: text }).then((response) => {
-      const url = window.URL.createObjectURL(response);
+    const audioBlob = await query({ inputs: text });
+    if (audioBlob) {
+      const url = window.URL.createObjectURL(audioBlob);
       setAudioUrl(url);
-    });
+    }
   };
 
   return (
@@ -43,6 +59,7 @@ const Try: React.FC = () => {
       />
       <Card sx={{ display: 'flex' }}>
         <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+          {error && <p style={{ color: 'red' }}>{error}</p>}
         </Box>
         {audioUrl && (
           <Box>
