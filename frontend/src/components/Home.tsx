@@ -11,6 +11,7 @@ const Home: React.FC = () => {
   const [converting, setConverting] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
+  const [pdfText, setPdfText] = useState<string | null>(null); 
 
   useEffect(() => {
     // รีเซ็ตสถานะเมื่อคอมโพเนนต์ถูกสร้างขึ้น (mounted) หรือรีเฟรชหน้า
@@ -20,6 +21,7 @@ const Home: React.FC = () => {
     setConverting(false);
     setUploadMessage(null);
     setProgress(0);
+    setPdfText(null);
   }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,6 +41,10 @@ const Home: React.FC = () => {
       setUploadMessage('PDF uploaded successfully');
       setAudioUrl('path/to/converted/audio/file'); // Update this based on your actual implementation
 
+      // แสดงผลข้อความจาก PDF ถ้ามี
+      if (response.Text) {
+        setPdfText(response.Text);
+      }
       // Mocking progress increment for conversion
       let progressInterval = setInterval(() => {
         setProgress(prev => {
@@ -111,6 +117,14 @@ const Home: React.FC = () => {
           {uploadMessage && (
             <Typography variant="subtitle1" color="error">{uploadMessage}</Typography>
           )}
+          
+          {pdfText && (
+            <Box sx={{ marginTop: 2 }}>
+              <Typography variant="h6">Extracted Text from PDF:</Typography>
+              <Typography variant="body1">{pdfText}</Typography>
+            </Box>
+          )}
+
         </Grid>
       </Grid>
     </Container>

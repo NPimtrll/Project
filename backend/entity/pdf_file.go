@@ -14,6 +14,7 @@ type PDFFile struct {
 	Size       int64
 	Status     string
 	Source     string // 'uploaded', 'converted_from_image'
+	Text       string  
 
 	UserID *uint
 	User   User `gorm:"foreignKey:UserID"`

@@ -79,14 +79,6 @@ const response = await fetch(`${apiUrl}/pdf_file/${id}`);
 return response.json();
 }
 
-async function updatePDF(id: number, pdf: IPDFFile): Promise<IPDFFile> {
-const response = await fetch(`${apiUrl}/pdf_file/${id}`, {
-  method: "PATCH",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(pdf),
-});
-return response.json();
-}
 
 async function deletePDF(id: number): Promise<void> {
 await fetch(`${apiUrl}/pdf_file/${id}`, { method: "DELETE" });
@@ -253,7 +245,6 @@ export {
   getPDFs,
   getPDFById,
   uploadPDF,
-  updatePDF,
   deletePDF,
   getSessions,
   getSessionById,

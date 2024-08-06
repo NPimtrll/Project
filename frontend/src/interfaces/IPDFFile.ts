@@ -11,6 +11,7 @@ export interface IPDFFile {
     Size: number;
     Status: string;
     Source: string;
+    Text: string;
     AudioFiles?: IAudioFile[];
     Conversions?: IConversion[];
     Images?: IImageFile[];
