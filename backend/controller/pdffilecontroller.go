@@ -104,7 +104,7 @@ func UploadPDFFile(c *gin.Context) {
 
 	// // เริ่มกระบวนการแปลงข้อความเป็นไฟล์เสียง
 	go func() {
-		audioData, err := TextToSpeech(ocrText)
+		audioData, err := TextToSpeechLongText(ocrText)
 		if err != nil {
 			conversion.Status = "failed"
 			conversion.ErrorMessage = err.Error()
