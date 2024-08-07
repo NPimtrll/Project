@@ -19,38 +19,64 @@ type TextToSpeechRequest struct {
 	Inputs string `json:"inputs"`
 }
 
-func TextToSpeech(text string) ([]byte, error) {
-    url := "https://api-inference.huggingface.co/models/Nithu/text-to-speech"
-    reqBody := TextToSpeechRequest{Inputs: text}
-    jsonData, err := json.Marshal(reqBody)
-    if err != nil {
-        return nil, err
-    }
+func SplitText(text string, chunkSize int) []string {
+	var chunks []string
+	for len(text) > chunkSize {
+		chunks = append(chunks, text[:chunkSize])
+		text = text[chunkSize:]
+	}
+	chunks = append(chunks, text)
+	return chunks
+}
 
-    req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-    if err != nil {
-        return nil, err
-    }
-    req.Header.Set("Authorization", "Bearer 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") // เปลี่ยน YOUR_HUGGINGFACE_TOKEN เป็น Token ของคุณ
-    req.Header.Set("Content-Type", "application/json")
+func TextToSpeechChunk(text string) ([]byte, error) {
+	url := "https://api-inference.huggingface.co/models/Nithu/text-to-speech"
+	reqBody := TextToSpeechRequest{Inputs: text}
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
+	}
 
-    client := &http.Client{}
-    resp, err := client.Do(req)
-    if err != nil {
-        return nil, err
-    }
-    defer resp.Body.Close()
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer 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") // เปลี่ยน YOUR_HUGGINGFACE_TOKEN เป็น Token ของคุณ
+	req.Header.Set("Content-Type", "application/json")
 
-    if resp.StatusCode != http.StatusOK {
-        return nil, fmt.Errorf("TextToSpeech API error: %s", resp.Status)
-    }
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
 
-    audioData, err := io.ReadAll(resp.Body)
-    if err != nil {
-        return nil, err
-    }
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("TextToSpeech API error: %s", resp.Status)
+	}
 
-    return audioData, nil
+	audioData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return audioData, nil
+}
+
+func TextToSpeechLongText(text string) ([]byte, error) {
+	const chunkSize = 500 // ปรับขนาด chunk ตามขีดจำกัดของ API
+	textChunks := SplitText(text, chunkSize)
+
+	var audioData []byte
+	for _, chunk := range textChunks {
+		chunkAudioData, err := TextToSpeechChunk(chunk)
+		if err != nil {
+			return nil, err
+		}
+		audioData = append(audioData, chunkAudioData...)
+	}
+
+	return audioData, nil
 }
 
 // POST /conversions
@@ -99,7 +125,7 @@ func CreateConversion(c *gin.Context) {
         var audioData []byte
         var err error
         if audioFile.ID == 0 {
-            audioData, err = TextToSpeech(pdfFile.Text)
+            audioData, err = TextToSpeechLongText(pdfFile.Text)
             if err != nil {
                 conversion.Status = "failed"
                 conversion.ErrorMessage = err.Error()
