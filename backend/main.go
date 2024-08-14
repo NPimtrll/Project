@@ -17,6 +17,9 @@ func main() {
 	r := gin.Default()
 	r.Use(CORSMiddleware())
 
+	// เสิร์ฟไฟล์จากโฟลเดอร์ uploads/audio
+	r.Static("/uploads/audio", "./uploads/audio")
+	
 	// User routes
 	r.POST("/user", controller.CreateUser)
 	r.GET("/user/:id", controller.GetUser)
@@ -38,7 +41,7 @@ func main() {
 		protected.GET("/pdf_files", controller.ListPDFFiles)
 		protected.DELETE("/pdf_files/:id", controller.DeletePDFFile)
 
-		protected.POST("/upload_audio", controller.UploadAudioFile) // Endpoint สำหรับอัปโหลด Audio
+		protected.GET("/users/:user_id/audio_files", controller.AudioFilesByUserId) 
 		protected.POST("/audio_files", controller.CreateAudioFile)
 		protected.GET("/audio_file/:id", controller.GetAudioFile)
 		protected.GET("/audio_files", controller.ListAudioFiles)
@@ -48,6 +51,7 @@ func main() {
 
 		protected.POST("/conversions", controller.CreateConversion)
 		protected.GET("/conversion/:id", controller.GetConversion)
+		protected.GET("/conversion/:id/status", controller.GetConversionStatus)
 		protected.GET("/conversions", controller.ListConversions)
 		protected.DELETE("/conversions/:id", controller.DeleteConversion)
 		protected.PATCH("/conversions", controller.UpdateConversion)

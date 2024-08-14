@@ -2,46 +2,25 @@ package controller
 
 import (
 	"net/http"
-	"path/filepath"
+	"strconv"
 
 	"github.com/NPimtrll/Project/entity"
 	"github.com/gin-gonic/gin"
 )
 
-// POST /upload_audio
-func UploadAudioFile(c *gin.Context) {
-	file, err := c.FormFile("file")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File upload failed"})
+// GET /users/:user_id/audio_files
+func AudioFilesByUserId(c *gin.Context) {
+	userID := c.Param("user_id")
+
+	var audioFiles []entity.AudioFile
+	if err := entity.DB().Where("user_id = ?", userID).Find(&audioFiles).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	filename := filepath.Base(file.Filename)
-	filepath := "./uploads/audio/" + filename
-
-	if err := c.SaveUploadedFile(file, filepath); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File save failed"})
-		return
-	}
-
-	userID := uint(1)
-
-	audioFile := entity.AudioFile{
-		Filename: filename,
-		FilePath: filepath,
-		// ควรจะตั้งค่า ConversionDate, Format, Duration, Size, และอื่นๆ ตามที่ต้องการ
-		Status: "uploaded",
-		Size:   file.Size,
-		UserID: &userID, // Replace with actual user ID
-	}
-
-	if err := entity.DB().Create(&audioFile).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Database save failed"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"data": audioFile})
+	c.JSON(http.StatusOK, gin.H{"data": audioFiles})
 }
+
 
 // POST /audio_files
 func CreateAudioFile(c *gin.Context) {
@@ -69,14 +48,17 @@ func GetAudioFile(c *gin.Context) {
 }
 
 // GET /audio_files
+// backend/controller/audiofilecontroller.go
 func ListAudioFiles(c *gin.Context) {
+	userId, _ := strconv.Atoi(c.Query("user_id"))
 	var audioFiles []entity.AudioFile
-	if err := entity.DB().Raw("SELECT * FROM audio_files").Scan(&audioFiles).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	if err := entity.DB().Where("user_id = ?", userId).Find(&audioFiles).Error; err != nil {
+	  c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	  return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": audioFiles})
-}
+  }
+  
 
 // DELETE /audio_files/:id
 func DeleteAudioFile(c *gin.Context) {
@@ -107,14 +89,24 @@ func UpdateAudioFile(c *gin.Context) {
 }
 
 // GET /download_audio/:id
+// GET /download_audio/:id
 func DownloadAudioFile(c *gin.Context) {
-	id := c.Param("id")
-	var audioFile entity.AudioFile
+    id := c.Param("id")
+    var audioFile entity.AudioFile
 
-	if err := entity.DB().First(&audioFile, id).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Audio file not found"})
-		return
-	}
+    if err := entity.DB().First(&audioFile, id).Error; err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Audio file not found"})
+        return
+    }
 
-	c.File(audioFile.FilePath)
+    // Set headers to force download
+    c.Header("Content-Description", "File Transfer")
+    c.Header("Content-Disposition", "attachment; filename="+audioFile.Filename)
+    c.Header("Content-Type", "application/octet-stream")
+    c.Header("Content-Transfer-Encoding", "binary")
+    c.Header("Expires", "0")
+    c.Header("Cache-Control", "must-revalidate")
+    c.Header("Pragma", "public")
+
+    c.File(audioFile.FilePath)
 }

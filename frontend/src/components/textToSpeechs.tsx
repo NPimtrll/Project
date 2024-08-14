@@ -12,10 +12,9 @@ const Try: React.FC = () => {
   async function query(data: { inputs: string }) {
     try {
       const response = await fetch(
-        "https://api-inference.huggingface.co/models/Nithu/text-to-speech",
+        "http://localhost:8080/ocr", // เปลี่ยนเป็น endpoint ของ backend
         {
           headers: {
-            Authorization: "Bearer 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",
             "Content-Type": "application/json",
           },
           method: "POST",
@@ -34,7 +33,6 @@ const Try: React.FC = () => {
       return result;
     } catch (error) {
       console.error('Fetch error:', error);
-      
       return null;
     }
   }

@@ -5,14 +5,44 @@ import { IUser } from "../../interfaces/IUser";
 import { IImageFile } from "../../interfaces/IImageFile";
 import { IConversion } from "../../interfaces/IConversion";
 
-const apiUrl = "http://localhost:8080";
+export const apiUrl = "http://localhost:8080"; // ประกาศ apiUrl
+
 
 interface LoginResponse {
   token: string;
   user: IUser;
 }
 
+async function getAudioFilesByUserId(userId: number): Promise<IAudioFile[]> {
+  const response = await fetch(`${apiUrl}/users/${userId}/audio_files`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch audio files');
+  }
+  
+  const data = await response.json();
+  
+  // Debugging: Log the result to verify the content
+  console.log('Audio Files Data:', data);
+  
+  // Check if data is an array
+  if (data) {
+    return data.data
+  } else {
+    throw new Error('Unexpected data format');
+  }
+}
+
+
+
+
+
 // Audio File CRUD operations
+// เพิ่มฟังก์ชันการดึงข้อมูลไฟล์เสียงของ PDF
+async function getAudioFilesByPDFId(pdfId: number): Promise<IAudioFile[]> {
+  const response = await fetch(`${apiUrl}/pdf_file/${pdfId}/audio_files`);
+  return response.json();
+}
+
 async function getAudioFiles(): Promise<IAudioFile[]> {
   const response = await fetch(`${apiUrl}/audio-files`);
   return response.json();
@@ -46,7 +76,9 @@ async function deleteAudioFile(id: number): Promise<void> {
 }
 
 
-async function uploadPDF(file: File): Promise<IPDFFile> {
+async function uploadPDF(file: File): Promise<{
+  ID: number; audioUrl: string; Text?: string 
+}> {
   const authToken = localStorage.getItem('authToken'); // Ensure 'authToken' is the correct key name
 
   const formData = new FormData();
@@ -64,20 +96,15 @@ async function uploadPDF(file: File): Promise<IPDFFile> {
     throw new Error('Failed to upload PDF');
   }
 
-  return response.json();
+  const result = await response.json();
+  
+  // Debugging: Log the result to verify the content
+  console.log('Upload Response:', result);
+
+  return result;
 }
 
 
-
-async function getPDFs(): Promise<IPDFFile[]> {
-const response = await fetch(`${apiUrl}/pdf_files`);
-return response.json();
-}
-
-async function getPDFById(id: number): Promise<IPDFFile> {
-const response = await fetch(`${apiUrl}/pdf_file/${id}`);
-return response.json();
-}
 
 
 async function deletePDF(id: number): Promise<void> {
@@ -201,13 +228,20 @@ async function getConversionById(id: number): Promise<IConversion> {
 }
 
 async function createConversion(conversion: IConversion): Promise<IConversion> {
-  const response = await fetch(`${apiUrl}/conversion`, {
+  const response = await fetch(`${apiUrl}/conversions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(conversion),
   });
-  return response.json();
+  
+  if (!response.ok) {
+    throw new Error('Failed to create conversion');
+  }
+
+  return response.json(); // ต้องแน่ใจว่า API ส่งกลับข้อมูลที่ตรงตาม IConversion
 }
+
+
 
 async function updateConversion(id: number, conversion: IConversion): Promise<IConversion> {
   const response = await fetch(`${apiUrl}/conversion/${id}`, {
@@ -221,6 +255,17 @@ async function updateConversion(id: number, conversion: IConversion): Promise<IC
 async function deleteConversion(id: number): Promise<void> {
   await fetch(`${apiUrl}/conversion/${id}`, { method: "DELETE" });
 }
+
+async function getConversionStatus(id: number): Promise<{ status: string; audioUrl?: string }> {
+  const response = await fetch(`${apiUrl}/conversions/${id}/status`);
+  if (!response.ok) {
+      throw new Error('Failed to fetch conversion status');
+  }
+  const data = await response.json();
+  return data;
+}
+
+
 
 async function loginUser(credentials: { username: string; password: string }): Promise<LoginResponse> {
   const response = await fetch(`${apiUrl}/login`, {
@@ -237,13 +282,13 @@ async function loginUser(credentials: { username: string; password: string }): P
 }
 
 export {
+  getAudioFilesByPDFId,
+  getAudioFilesByUserId,
   getAudioFiles,
   getAudioFileById,
   createAudioFile,
   updateAudioFile,
   deleteAudioFile,
-  getPDFs,
-  getPDFById,
   uploadPDF,
   deletePDF,
   getSessions,
@@ -266,5 +311,6 @@ export {
   createConversion,
   updateConversion,
   deleteConversion,
+  getConversionStatus,
   loginUser
 };
