@@ -1,115 +1,85 @@
-import React, { useState, useRef } from 'react';
-import { Container, List, ListItem, ListItemText, Button, Typography, Slider, Grid, IconButton, CircularProgress } from '@mui/material';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import PauseIcon from '@mui/icons-material/Pause';
-import SkipNextIcon from '@mui/icons-material/SkipNext';
-import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
-import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import React, { useState, useEffect } from 'react';
+import { Container, List, ListItem, ListItemText, Typography, CircularProgress, Box, IconButton } from '@mui/material';
 import GetAppIcon from '@mui/icons-material/GetApp';
+import { getAudioFilesByUserId } from '../services/http/index';
+import { IAudioFile } from '../interfaces/IAudioFile';
+import { apiUrl } from '../services/http/index';
 
 const Collection: React.FC = () => {
-  const audioFiles = [
-    { name: 'เสียงที่แปลงแล้ว 1.mp3', url: '/path/to/audio1.mp3' },
-    { name: 'เสียงที่แปลงแล้ว 2.mp3', url: '/path/to/audio2.mp3' },
-    // เพิ่มไฟล์เสียงเพิ่มเติมตามต้องการ
-  ];
+  const [audioFiles, setAudioFiles] = useState<IAudioFile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<number | null>(1);
 
-  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    const fetchAudioFiles = async () => {
+      if (userId) {
+        try {
+          const files = await getAudioFilesByUserId(userId);
+          if (files) {
+            setAudioFiles(files);
+          } else {
+            console.error('Invalid data format:', files);
+            setAudioFiles([]);
+          }
+        } catch (error) {
+          console.error('Failed to fetch audio files:', error);
+          setAudioFiles([]);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
 
-  const handlePlay = (url: string) => {
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.currentTime = 0;
-    }
-    const audio = new Audio(url);
-    setCurrentAudio(audio);
-    audio.currentTime = currentTime;
-    audio.play();
-    setIsPlaying(true);
-  };
+    fetchAudioFiles();
+  }, [userId]);
 
-  const handlePause = () => {
-    if (currentAudio) {
-      currentAudio.pause();
-      setIsPlaying(false);
-    }
-  };
-
-  const handleSeek = (event: Event, newValue: number | number[], activeThumb: number) => {
-    if (currentAudio) {
-      setCurrentTime(newValue as number);
-      currentAudio.currentTime = newValue as number;
-    }
-  };
-
-  const handleVolumeChange = (event: Event, newValue: number | number[], activeThumb: number) => {
-    if (currentAudio) {
-      currentAudio.volume = newValue as number;
-    }
-  };
-
-  const handleSkipPrevious = () => {
-    if (currentAudio) {
-      const newTime = currentAudio.currentTime - 10;
-      currentAudio.currentTime = newTime < 0 ? 0 : newTime;
+  const handleDownload = async (id: number, filename: string) => {
+    try {
+      const response = await fetch(`${apiUrl}/download_audio/${id}`);
+  
+      if (!response.ok) {
+        throw new Error('Failed to download audio file');
+      }
+  
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'audio.mp3';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading file:', error);
     }
   };
-
-  const handleSkipNext = () => {
-    if (currentAudio) {
-      const newTime = currentAudio.currentTime + 10;
-      currentAudio.currentTime = newTime > currentAudio.duration ? currentAudio.duration : newTime;
-    }
-  };
-
-  const handleDownload = () => {
-    // ฟังก์ชั่นการดาวน์โหลดไฟล์เสียง
-  };
+  
+  if (loading) return <CircularProgress />;
 
   return (
     <Container>
       <Typography variant="h4" gutterBottom>Collection</Typography>
       <List>
-        {audioFiles.map((file, index) => (
-          <ListItem key={index}>
-            <ListItemText primary={file.name} />
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={2}>
-                <IconButton color="primary" onClick={() => handlePlay(file.url)} disabled={isPlaying}>
-                  <PlayArrowIcon />
-                </IconButton>
-                <IconButton color="secondary" onClick={handlePause} disabled={!isPlaying}>
-                  <PauseIcon />
-                </IconButton>
-              </Grid>
-              <Grid item xs={6}>
-                <audio ref={audioRef} src={file.url} />
-                <Slider
-                  value={currentTime}
-                  max={currentAudio?.duration || 0}
-                  onChange={handleSeek}
-                  aria-labelledby="continuous-slider"
-                  sx={{ width: '100%' }}
-                />
-              </Grid>
-              <Grid item xs={4}>
-                <IconButton onClick={handleSkipPrevious}>
-                  <SkipPreviousIcon />
-                </IconButton>
-                <IconButton onClick={handleSkipNext}>
-                  <SkipNextIcon />
-                </IconButton>
-                <IconButton onClick={handleDownload}>
-                  <GetAppIcon />
-                </IconButton>
-              </Grid>
-            </Grid>
-          </ListItem>
-        ))}
+        {audioFiles.length > 0 ? (
+          audioFiles.map((file) => (
+            <ListItem key={file.ID}>
+              <ListItemText primary={file.Filename} />
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <audio controls src={`${apiUrl}/${file.FilePath.replace('\\', '/')}`}>
+                  Your browser does not support the audio element.
+                </audio>
+                {file.ID !== undefined && (
+                  <IconButton onClick={() => handleDownload(file.ID!, file.Filename)}>
+                    <GetAppIcon />
+                  </IconButton>
+                )}
+              </Box>
+            </ListItem>
+          ))
+        ) : (
+          <Typography>No audio files found.</Typography>
+        )}
       </List>
     </Container>
   );
