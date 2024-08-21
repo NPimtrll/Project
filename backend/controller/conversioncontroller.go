@@ -42,7 +42,7 @@ func TextToSpeechChunk(text string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer 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")
+	req.Header.Set("Authorization", "Bearer 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")
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -65,7 +65,6 @@ func TextToSpeechChunk(text string) ([]byte, error) {
 	return audioData, nil
 }
 
-
 func TextToSpeechLongText(text string) ([]byte, error) {
 	const chunkSize = 500 // ปรับขนาด chunk ตามขีดจำกัดของ API
 	textChunks := SplitText(text, chunkSize)
@@ -83,128 +82,125 @@ func TextToSpeechLongText(text string) ([]byte, error) {
 }
 
 func CreateConversion(c *gin.Context) {
-    var conversion entity.Conversion
-    if err := c.ShouldBindJSON(&conversion); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-        return
-    }
+	var conversion entity.Conversion
+	if err := c.ShouldBindJSON(&conversion); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-    if conversion.PDFID == nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "PDFID is required"})
-        return
-    }
+	if conversion.PDFID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "PDFID is required"})
+		return
+	}
 
-    var pdfFile entity.PDFFile
-    if err := entity.DB().First(&pdfFile, conversion.PDFID).Error; err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "PDF file not found"})
-        return
-    }
+	var pdfFile entity.PDFFile
+	if err := entity.DB().First(&pdfFile, conversion.PDFID).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "PDF file not found"})
+		return
+	}
 
-    conversion.Status = "in_progress"
-    conversion.ConversionDate = time.Now()
+	conversion.Status = "in_progress"
+	conversion.ConversionDate = time.Now()
 
-    // Save initial conversion status to database
-    if err := entity.DB().Save(&conversion).Error; err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save initial conversion status"})
-        return
-    }
+	// Save initial conversion status to database
+	if err := entity.DB().Save(&conversion).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save initial conversion status"})
+		return
+	}
 
-    var audioData []byte
-    var err error
+	var audioData []byte
+	var err error
 
-    audioData, err = TextToSpeechLongText(pdfFile.Text)
-    if err != nil {
-        conversion.Status = "failed"
-        conversion.ErrorMessage = err.Error()
-        entity.DB().Save(&conversion)
-        return
-    }
+	audioData, err = TextToSpeechLongText(pdfFile.Text)
+	if err != nil {
+		conversion.Status = "failed"
+		conversion.ErrorMessage = err.Error()
+		entity.DB().Save(&conversion)
+		return
+	}
 
-    audioFilename := filepath.Base(pdfFile.Filename) + ".wav"
-    audioPath := filepath.Join("uploads/audio", audioFilename)
+	audioFilename := filepath.Base(pdfFile.Filename) + ".wav"
+	audioPath := filepath.Join("uploads/audio", audioFilename)
 
-    if err := os.MkdirAll(filepath.Dir(audioPath), 0755); err != nil {
-        conversion.Status = "failed"
-        conversion.ErrorMessage = err.Error()
-        entity.DB().Save(&conversion)
-        return
-    }
+	if err := os.MkdirAll(filepath.Dir(audioPath), 0755); err != nil {
+		conversion.Status = "failed"
+		conversion.ErrorMessage = err.Error()
+		entity.DB().Save(&conversion)
+		return
+	}
 
-    if err := os.WriteFile(audioPath, audioData, 0644); err != nil {
-        conversion.Status = "failed"
-        conversion.ErrorMessage = err.Error()
-        entity.DB().Save(&conversion)
-        return
-    }
+	if err := os.WriteFile(audioPath, audioData, 0644); err != nil {
+		conversion.Status = "failed"
+		conversion.ErrorMessage = err.Error()
+		entity.DB().Save(&conversion)
+		return
+	}
 
-    audioFile := entity.AudioFile{
-        Filename:       audioFilename,
-        FilePath:       audioPath,
-        Status:         "generated",
-        Size:           int64(len(audioData)),
-        ConversionDate: time.Now(),
-        Format:         "wav",
-        Duration:       0,
-        PDFID:          conversion.PDFID,
-        UserID:         conversion.UserID,
-    }
+	audioFile := entity.AudioFile{
+		Filename:       audioFilename,
+		FilePath:       audioPath,
+		Status:         "generated",
+		Size:           int64(len(audioData)),
+		ConversionDate: time.Now(),
+		Format:         "wav",
+		Duration:       0,
+		PDFID:          conversion.PDFID,
+		UserID:         conversion.UserID,
+	}
 
-    if err := entity.DB().Create(&audioFile).Error; err != nil {
-        conversion.Status = "failed"
-        conversion.ErrorMessage = err.Error()
-        entity.DB().Save(&conversion)
-        return
-    }
+	if err := entity.DB().Create(&audioFile).Error; err != nil {
+		conversion.Status = "failed"
+		conversion.ErrorMessage = err.Error()
+		entity.DB().Save(&conversion)
+		return
+	}
 
-    // Use the created audioFile directly to update conversion
-    fmt.Print("&audioFile.ID",audioFile.ID)
-    conversion.AudioID = &audioFile.ID
-    conversion.Status = "completed"
-    conversion.ErrorMessage = ""
+	// Use the created audioFile directly to update conversion
+	fmt.Print("&audioFile.ID", audioFile.ID)
+	conversion.AudioID = &audioFile.ID
+	conversion.Status = "completed"
+	conversion.ErrorMessage = ""
 
-    if err := entity.DB().Save(&conversion).Error; err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update conversion record"})
-        return
-    }
-     
-    audioUrl := fmt.Sprintf("/uploads/audio/%s", audioFilename)
+	if err := entity.DB().Save(&conversion).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update conversion record"})
+		return
+	}
 
-    // Send success response with audio URL
-    c.JSON(http.StatusOK, gin.H{"message": "Conversion completed", "data": conversion, "audioUrl": audioUrl})
+	audioUrl := fmt.Sprintf("/uploads/audio/%s", audioFilename)
+
+	// Send success response with audio URL
+	c.JSON(http.StatusOK, gin.H{"message": "Conversion completed", "data": conversion, "audioUrl": audioUrl})
 }
-
-
 
 // GET /conversion/:id/status
 func GetConversionStatus(c *gin.Context) {
-    id := c.Param("id")
-    
-    // ตรวจสอบรูปแบบ ID
-    if id == "" {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
-        return
-    }
+	id := c.Param("id")
 
-    var conversion entity.Conversion
-    if err := entity.DB().First(&conversion, id).Error; err != nil {
-        // หากไม่พบการแปลงที่ตรงกัน
-        if err == gorm.ErrRecordNotFound {
-            c.JSON(http.StatusNotFound, gin.H{"error": "Conversion not found"})
-        } else {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-        }
-        return
-    }
+	// ตรวจสอบรูปแบบ ID
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
 
-    // ส่งข้อมูลสถานะของการแปลงกลับ
-    c.JSON(http.StatusOK, gin.H{
-        "status":      conversion.Status,
-        "conversionID": conversion.ID,
-        "errorMessage": conversion.ErrorMessage, // เพิ่มข้อมูล error message ถ้ามี
-        "conversionDate": conversion.ConversionDate, // เพิ่มข้อมูลวันที่สร้าง
-    })
+	var conversion entity.Conversion
+	if err := entity.DB().First(&conversion, id).Error; err != nil {
+		// หากไม่พบการแปลงที่ตรงกัน
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Conversion not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	// ส่งข้อมูลสถานะของการแปลงกลับ
+	c.JSON(http.StatusOK, gin.H{
+		"status":         conversion.Status,
+		"conversionID":   conversion.ID,
+		"errorMessage":   conversion.ErrorMessage,   // เพิ่มข้อมูล error message ถ้ามี
+		"conversionDate": conversion.ConversionDate, // เพิ่มข้อมูลวันที่สร้าง
+	})
 }
-
 
 // GET /conversion/:id
 func GetConversion(c *gin.Context) {

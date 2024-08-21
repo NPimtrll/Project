@@ -150,6 +150,7 @@ async function deleteSession(token: string): Promise<void> {
 
 
 
+
 // User CRUD operations
 async function getUsers(): Promise<IUser[]> {
   const response = await fetch(`${apiUrl}/users`);
