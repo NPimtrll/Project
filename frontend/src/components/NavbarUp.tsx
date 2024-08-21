@@ -1,29 +1,33 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AppBar, Toolbar, Typography, Button } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import { deleteSession } from '../services/http/index'; // import deleteSession function
 
 interface NavbarProps {
   isLoggedIn: boolean;
-  setIsLoggedIn: (value: boolean) => void;
+  setIsLoggedIn: (isLoggedIn: boolean) => void;
 }
+
 
 const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, setIsLoggedIn }) => {
   const navigate = useNavigate();
 
+  useEffect(() => {
+    // ตรวจสอบว่า token ยังคงอยู่ใน localStorage หรือไม่
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      setIsLoggedIn(true);
+    }
+  }, [setIsLoggedIn]);
+
   const handleLogout = async () => {
-    // ลบ token และข้อมูลอื่นๆ จาก local storage
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     if (token) {
       await deleteSession(token);
     }
-    localStorage.clear(); // ลบข้อมูลทั้งหมดจาก local storage
-
-    // reset state ที่เกี่ยวข้องกับการล็อกอิน
+    localStorage.clear(); 
     setIsLoggedIn(false);
-    // นำผู้ใช้ไปยังหน้า home
     navigate('/home');
-    // รีเฟรชหน้า home
     window.location.reload();
   };
 
@@ -48,3 +52,4 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, setIsLoggedIn }) => {
 };
 
 export default Navbar;
+
