@@ -15,7 +15,7 @@ const Try: React.FC = () => {
         "https://api-inference.huggingface.co/models/Nithu/text-to-speech",
         {
           headers: {
-            Authorization: "Bearer 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",
+            Authorization: "Bearer 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",
             "Content-Type": "application/json",
           },
           method: "POST",
