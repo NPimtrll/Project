@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/NPimtrll/Project/entity"
@@ -108,42 +109,50 @@ func CreateSession(c *gin.Context) {
 
 
 func DeleteSession(c *gin.Context) {
-	tokenString := c.GetHeader("Authorization")
-	if tokenString == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "token is required"})
-		return
-	}
+    tokenString := c.GetHeader("Authorization")
+    if tokenString == "" {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "token is required"})
+        return
+    }
 
-	claims := &middlewares.Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return jwtKey, nil
-	})
+    parts := strings.Split(tokenString, " ")
+    if len(parts) != 2 || parts[0] != "Bearer" {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token format"})
+        return
+    }
+    tokenString = parts[1]
 
-	if err != nil || !token.Valid {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
-		return
-	}
+    claims := &middlewares.Claims{}
+    token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+        return jwtKey, nil
+    })
 
-	var session entity.Session
-	if err := entity.DB().Where("session_token = ?", tokenString).First(&session).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "session not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+    if err != nil || !token.Valid {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+        return
+    }
 
-	logoutTime := time.Now()
-	session.LogoutTime = &logoutTime
+    var session entity.Session
+    if err := entity.DB().Where("session_token = ?", tokenString).First(&session).Error; err != nil {
+        if err == gorm.ErrRecordNotFound {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "session not found"})
+            return
+        }
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
 
-	if err := entity.DB().Save(&session).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+    logoutTime := time.Now()
+    session.LogoutTime = &logoutTime
 
-	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
+    if err := entity.DB().Save(&session).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
 }
+
 
 func ListSessions(c *gin.Context) {
 	var sessions []entity.Session
