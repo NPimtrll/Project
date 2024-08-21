@@ -1,6 +1,10 @@
 package controller
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -96,67 +100,60 @@ func UploadPDFFile(c *gin.Context) {
 		UserID:         userIDUint,
 	}
 
-	// // บันทึก conversion record ลงฐานข้อมูล
-	if err := entity.DB().Create(&conversion).Error; err != nil {
+	// ส่ง HTTP request เพื่อสร้าง conversion record
+	conversionURL := "http://localhost:8080/conversions" // ปรับ URL ตามที่ใช้งานจริง
+	conversionRequest := map[string]interface{}{
+		"PDFID":          pdf.ID,
+		"AudioID":        nil,
+		"ConversionDate": conversion.ConversionDate,
+		"Status":         conversion.Status,
+		"ErrorMessage":   conversion.ErrorMessage,
+		"UserID":         conversion.UserID,
+	}
+
+	reqBody, _ := json.Marshal(conversionRequest)
+	resp, err := http.Post(conversionURL, "application/json", bytes.NewBuffer(reqBody))
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create conversion record"})
 		return
 	}
+	defer resp.Body.Close()
 
-	// // เริ่มกระบวนการแปลงข้อความเป็นไฟล์เสียง
-	go func() {
-		audioData, err := TextToSpeechLongText(ocrText)
-		if err != nil {
-			conversion.Status = "failed"
-			conversion.ErrorMessage = err.Error()
-			entity.DB().Save(&conversion)
-			return
-		}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to create conversion record: %s", body)})
+		return
+	}
 
-		audioFilename := filepath.Base(filename) + ".wav"
-		audioPath := filepath.Join("uploads/audio", audioFilename)
+	var conversionResponse map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&conversionResponse); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode conversion response"})
+		return
+	}
 
-		// สร้างโฟลเดอร์ถ้าไม่มี
-		if err := os.MkdirAll(filepath.Dir(audioPath), os.ModePerm); err != nil {
-			conversion.Status = "failed"
-			conversion.ErrorMessage = err.Error()
-			entity.DB().Save(&conversion)
-			return
-		}
+	audioUrl, ok := conversionResponse["audioUrl"].(string)
+    if !ok {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve audio URL"})
+        return
+    }
 
-		// บันทึกไฟล์เสียง
-		if err := os.WriteFile(audioPath, audioData, os.ModePerm); err != nil {
-			conversion.Status = "failed"
-			conversion.ErrorMessage = err.Error()
-			entity.DB().Save(&conversion)
-			return
-		}
 
-		// สร้างข้อมูลไฟล์เสียงที่จะเก็บในฐานข้อมูล
-		audioFile := entity.AudioFile{
-			Filename: audioFilename,
-			FilePath: audioPath,
-			Status:   "generated",
-			Size:     int64(len(audioData)),
-			UserID:   userIDUint,
-			PDFID:    &pdf.ID,
-		}
+	// fmt.Print("AudioID",conversionResponse["AudioID"])
+	// fmt.Print("conversionResponse",)
 
-		// บันทึกข้อมูลไฟล์เสียงลงฐานข้อมูล
-		if err := entity.DB().Create(&audioFile).Error; err != nil {
-			conversion.Status = "failed"
-			conversion.ErrorMessage = err.Error()
-			entity.DB().Save(&conversion)
-			return
-		}
+	// สร้าง URL ของไฟล์เสียงที่สร้างขึ้น
+	// var audioUrl string
+	// if conversionResponse["AudioID"] != nil {
+	// 	audioID := conversionResponse["AudioID"].(float64) // สมมติว่า ID ถูกส่งเป็น float64
+	// 	audioUrl = fmt.Sprintf("http://localhost:8080/uploads/audio/%d.wav", int(audioID))
+	// }
 
-		// อัพเดต conversion record กับข้อมูล AudioID
-		conversion.AudioID = &audioFile.ID
-		conversion.Status = "completed"
-		entity.DB().Save(&conversion)
-	}()
-
-	// ตอบกลับ
-	c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully", "pdf": pdf})
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "File uploaded and conversion started successfully",
+		"pdf":        pdf,
+		"conversion": conversionResponse,
+		"audioUrl":   audioUrl, // รวม URL ของไฟล์เสียงในคำตอบ
+	})
 }
 
 // GET /pdf_file/:id
