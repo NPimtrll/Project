@@ -13,34 +13,19 @@ const Try: React.FC = () => {
 
   const inference = new HfInference("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");
 
-  async function query(data: { input: string }) {
-    try {
-      const response = await fetch(
-        "http://localhost:8080/ocr", // Replace with your backend endpoint
-        {
-          headers: {
-            Authorization: "Bearer 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",
-            "Content-Type": "application/json",
-          },
-          method: "POST",
-          body: JSON.stringify(data),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error:', errorText);
-        setError('Error: ' + errorText);
-        return null;
+  async function query(data: { inputs: string }) {
+    const response = await fetch(
+      "https://api-inference.huggingface.co/models/Nithu/text-to-speech",
+      {
+        headers: {
+          Authorization: "Bearer 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",
+        },
+        method: "POST",
+        body: JSON.stringify(data),
       }
-
-      const result = await response.blob();
-      return result;
-    } catch (error) {
-      console.error('Fetch error:', error);
-      setError('Fetch error: ' +  (error as Error).message);
-      return null;
-    }
+    );
+    const result = await response.blob();
+    return result;
   }
 
   async function query1(inputs: string) {
@@ -60,7 +45,7 @@ const Try: React.FC = () => {
   const handleButtonClick = async () => {
     const corrected = await query1(text);
     setCorrectedText(corrected);
-    const audioBlob = await query({ input: corrected });
+    const audioBlob = await query({ inputs: corrected });
     if (audioBlob) {
       const url = window.URL.createObjectURL(audioBlob);
       setAudioUrl(url);
