@@ -42,7 +42,7 @@ func TextToSpeechChunk(text string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer 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")
+	req.Header.Set("Authorization", "Bearer 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")
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}

@@ -52,18 +52,19 @@ func UploadPDFFile(c *gin.Context) {
 	log.Printf("Sending %d bytes to OCR API", len(fileBytes))
 
 	// เรียกใช้ OCR เพื่อแปลง PDF เป็นข้อความ
-	ocrText, err := ocr.RunOCR(fileBytes) // ใช้ฟังก์ชันจาก package ocr
+	ocrText, err := ocr.RunOCR(fileBytes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "OCR processing failed"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "OCR processing failed", "details": err.Error()})
 		return
 	}
 
-	// // เรียกใช้ Spellcheck เพื่อปรับปรุงข้อความ
-	// checkedText, err := ocr.SpellCheck(ocrText) // ใช้ฟังก์ชัน SpellCheck จาก package ocr
+	// // ตรวจสอบว่าการตรวจสอบการสะกดคำสำเร็จหรือไม่
+	// checkedText, err := llm.SpellCheck(ocrText)
 	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Spellcheck processing failed"})
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Spellcheck processing failed", "details": err.Error()})
 	// 	return
 	// }
+
 
 	// ดึง UserID จาก context
 	userID, exists := c.Get("userID")
@@ -136,17 +137,6 @@ func UploadPDFFile(c *gin.Context) {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve audio URL"})
         return
     }
-
-
-	// fmt.Print("AudioID",conversionResponse["AudioID"])
-	// fmt.Print("conversionResponse",)
-
-	// สร้าง URL ของไฟล์เสียงที่สร้างขึ้น
-	// var audioUrl string
-	// if conversionResponse["AudioID"] != nil {
-	// 	audioID := conversionResponse["AudioID"].(float64) // สมมติว่า ID ถูกส่งเป็น float64
-	// 	audioUrl = fmt.Sprintf("http://localhost:8080/uploads/audio/%d.wav", int(audioID))
-	// }
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":    "File uploaded and conversion started successfully",
