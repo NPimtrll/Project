@@ -8,6 +8,8 @@ require (
 	gorm.io/gorm v1.25.11
 )
 
+require github.com/joho/godotenv v1.5.1
+
 require (
 	github.com/bytedance/sonic v1.11.9 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect

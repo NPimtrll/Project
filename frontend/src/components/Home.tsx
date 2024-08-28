@@ -4,6 +4,8 @@ import GetAppIcon from '@mui/icons-material/GetApp';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { uploadPDF } from '../services/http/index';
 import { apiUrl } from '../services/http/index'; // เพิ่มการ import apiUrl
+import axios from 'axios';
+
 
 const Home: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -32,12 +34,24 @@ const Home: React.FC = () => {
   const uploadFile = async (file: File) => {
     setLoading(true);
     setProgress(0);
-
+  
     try {
+      // เริ่มการอัพเดต progress จาก 0% ถึง 80%
+      let progressInterval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 99) {
+            clearInterval(progressInterval); // หยุดที่ 80%
+            return 99;
+          }
+          return prev + 1; // เพิ่มขึ้นทีละ 1% เพื่อทำให้โปรเกรสสมูท
+        });
+      }, 100); // ทุกๆ 100ms จะเพิ่มขึ้นทีละ 1%
+  
+      // เรียกใช้การอัพโหลดไฟล์ PDF
       const uploadResponse = await uploadPDF(file);
-
+  
       console.log('Upload Response:', uploadResponse); // Debugging
-
+  
       setUploadMessage('PDF uploaded successfully');
       setPdfText(uploadResponse.Text || null);
       
@@ -47,24 +61,17 @@ const Home: React.FC = () => {
       } else {
         setAudioUrl(null);
       }
-
-      // Simulate progress update (can be removed if not needed)
-      let progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(progressInterval);
-            return 100;
-          }
-          return prev + 10;
-        });
-      }, 500);
-
+  
+      // เมื่ออัพโหลดเสร็จสมบูรณ์ให้ปรับโปรเกรสเป็น 100%
+      setProgress(100);
+  
     } catch (error) {
       setUploadMessage('Error uploading file');
     } finally {
       setLoading(false);
     }
   };
+  
 
   const handleDownload = async () => {
     if (audioUrl) {
