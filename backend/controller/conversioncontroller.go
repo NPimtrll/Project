@@ -42,9 +42,15 @@ func TextToSpeechChunk(text string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer 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")
-	req.Header.Set("Content-Type", "application/json")
+	// Use the API key from the environment variable
+    apiKey := os.Getenv("HUGGING_FACE_API_KEY")
+    if apiKey == "" {
+        return nil, fmt.Errorf("HUGGING_FACE_API_KEY is not set")
+    }
 
+    req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+    req.Header.Set("Content-Type", "application/json")
+	
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {

@@ -5,16 +5,21 @@ from PIL import Image
 import io
 import os
 from huggingface_hub import InferenceClient
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = 'C:/Users/msi01/Desktop/Project/backend/uploads/photo'
+UPLOAD_FOLDER = 'E:/Project/backend/uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+    
+HF_TOKEN = os.getenv("HUGGING_FACE_API_KEY")
 
 client = InferenceClient(
     "meta-llama/Meta-Llama-3-8B-Instruct",
-    token="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",
+    token=HF_TOKEN,
 )
 
 def pdf_to_text(pdf_data):
@@ -40,7 +45,7 @@ def pdf_to_text(pdf_data):
         # Use the text as input to the LLM for spell-checking
         corrected_text = ""
         for message in client.chat_completion(
-            messages=[{"role": "user", "content": f"Correct the spelling mistakes in the following text and send out only the corrected text, without any additional messages, especially not 'Here is the corrected text:'.And display all messages, even if they are duplicates.: {text}"}],
+            messages=[{"role": "user", "content": f"Correct the spelling errors in the following message and send only the corrected text, no additional text, especially 'This is the corrected text', and make sure to get the correct text on every line, even if it is repeated: {text}"}],
             max_tokens=500,
             stream=True,
         ):

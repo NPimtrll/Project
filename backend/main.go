@@ -2,21 +2,36 @@ package main
 
 import (
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/NPimtrll/Project/controller"
 	"github.com/NPimtrll/Project/entity"
 	"github.com/NPimtrll/Project/middlewares"
 	"github.com/NPimtrll/Project/ocr" // import package ocr
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
 	entity.SetupDatabase()
 
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	// Access environment variables
+	apiKey := os.Getenv("HUGGING_FACE_API_KEY")
+	if apiKey == "" {
+		log.Fatal("HUGGING_FACE_API_KEY is not set")
+	}
+
+
 	r := gin.Default()
 	r.Use(CORSMiddleware())
-
+	
 	// เสิร์ฟไฟล์จากโฟลเดอร์ uploads/audio
 	r.Static("/uploads/audio", "./uploads/audio")
 	
