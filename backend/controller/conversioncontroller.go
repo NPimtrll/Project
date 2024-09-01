@@ -117,7 +117,7 @@ func CreateConversion(c *gin.Context) {
 	var audioData []byte
 	var err error
 
-	audioData, err = TextToSpeechLongText(pdfFile.Text)
+	audioData, err = TextToSpeechLongText(pdfFile.TextCorrect) //ปรับตรงนี้
 	if err != nil {
 		conversion.Status = "failed"
 		conversion.ErrorMessage = err.Error()

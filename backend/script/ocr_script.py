@@ -4,59 +4,58 @@ import pytesseract
 from PIL import Image
 import io
 import os
-from huggingface_hub import InferenceClient
-from dotenv import load_dotenv
-
-load_dotenv()
+from llm import spell_check
+from pdf_to_image import pdf_to_images  # Import pdf_to_images function
 
 app = Flask(__name__)
 
 UPLOAD_FOLDER = 'E:/Project/backend/uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
-    
-HF_TOKEN = os.getenv("HUGGING_FACE_API_KEY")
-
-client = InferenceClient(
-    "meta-llama/Meta-Llama-3-8B-Instruct",
-    token=HF_TOKEN,
-)
 
 def pdf_to_text(pdf_data):
     try:
-        pdf_document = fitz.open(stream=pdf_data, filetype="pdf")
+        pdf_path = os.path.join(UPLOAD_FOLDER, 'temp.pdf')
+        with open(pdf_path, 'wb') as f:
+            f.write(pdf_data)
+
+        # แปลง PDF เป็นภาพ
+        output_dir = os.path.join(UPLOAD_FOLDER, 'images')
+        pdf_to_images(pdf_path, output_dir)
+
         text = ""
-        image_paths = []
+        for image_file in os.listdir(output_dir):
+            if image_file.lower().endswith('.png'):
+                img_path = os.path.join(output_dir, image_file)
+                img = Image.open(img_path)
 
-        for page_number in range(len(pdf_document)):
-            print(f"Processing page {page_number + 1}...")
-            page = pdf_document.load_page(page_number)
-            pix = page.get_pixmap()
-            img = Image.open(io.BytesIO(pix.tobytes()))
+                # Perform OCR on the image
+                ocr_result = pytesseract.image_to_string(img)
+                if not ocr_result.strip():
+                    print(f"OCR failed on image {image_file}. Skipping.")
+                    continue
 
-            # Save the image to the uploads directory
-            image_path = os.path.join(UPLOAD_FOLDER, f'page_{page_number + 1}.png')
-            img.save(image_path)
-            image_paths.append(image_path)
+                text += ocr_result
 
-            # Perform OCR on the image
-            text += pytesseract.image_to_string(img)
+        if not text.strip():
+            print("OCR did not extract any text.")
+            return None, None
 
-        # Use the text as input to the LLM for spell-checking
-        corrected_text = ""
-        for message in client.chat_completion(
-            messages=[{"role": "user", "content": f"Correct the spelling errors in the following message and send only the corrected text, no additional text, especially 'This is the corrected text', and make sure to get the correct text on every line, even if it is repeated: {text}"}],
-            max_tokens=500,
-            stream=True,
-        ):
-            corrected_text += message.choices[0].delta.content
+        # Print OCR text before spell check
+        print(f"OCR Text (Before Spell Check): {text}")
 
-        return corrected_text
-        # return text
+        # Call the spell_check function to correct the text
+        corrected_text = spell_check(text)
+
+        # Print corrected text
+        print(f"Corrected Text: {corrected_text}")
+
+        return text, corrected_text
 
     except Exception as e:
         print(f"An error occurred: {e}")
-        return None
+        return None, None
+
 
 @app.route('/ocr', methods=['POST'])
 def ocr():
@@ -76,15 +75,22 @@ def ocr():
         if not pdf_data:
             return jsonify({'error': 'Empty file received'}), 400
 
-        corrected_text = pdf_to_text(pdf_data)
-        if corrected_text is not None:
-            return jsonify({'text': corrected_text}), 200
+        ocr_text, corrected_text = pdf_to_text(pdf_data)
+        if ocr_text is not None and corrected_text is not None:
+            return jsonify({'ocrText': ocr_text, 'text': corrected_text}), 200
         else:
             return jsonify({'error': 'Failed to process the PDF file'}), 500
-
+    
     except Exception as e:
         print(f"An error occurred in the /ocr endpoint: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+
+@app.route('/spellcheck', methods=['POST'])
+def spell_check_route():
+    data = request.get_json()
+    text = data.get('text', '')
+    corrected_text = spell_check(text)
+    return jsonify({'text': corrected_text})
 
 if __name__ == "__main__":
     app.run(debug=True)

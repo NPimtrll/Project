@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/NPimtrll/Project/entity"
+	"github.com/NPimtrll/Project/llm"
 	"github.com/NPimtrll/Project/ocr"
 	"github.com/gin-gonic/gin"
 )
@@ -49,25 +49,19 @@ func UploadPDFFile(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Sending %d bytes to OCR API", len(fileBytes))
+    // เรียกใช้ OCR เพื่อแปลง PDF เป็นข้อความ
+    ocrText, err := ocr.RunOCR(fileBytes)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "OCR processing failed", "details": err.Error()})
+        return
+    }
 
-	// เรียกใช้ OCR เพื่อแปลง PDF เป็นข้อความ
-	ocrText, err := ocr.RunOCR(fileBytes)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "OCR processing failed", "details": err.Error()})
-		return
-	}
-
-	// เพิ่ม log เพื่อตรวจสอบผลลัพธ์จาก OCR
-	log.Printf("Received OCR Text: %s", ocrText)
-
-	// // ตรวจสอบว่าการตรวจสอบการสะกดคำสำเร็จหรือไม่
-	// checkedText, err := llm.SpellCheck(ocrText)
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Spellcheck processing failed", "details": err.Error()})
-	// 	return
-	// }
-
+    // เรียกใช้ LLM เพื่อแก้ไขการสะกดคำ
+    checkedText, err := llm.SpellCheck(ocrText)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Spellcheck processing failed", "details": err.Error()})
+        return
+    }
 
 	// ดึง UserID จาก context
 	userID, exists := c.Get("userID")
@@ -88,6 +82,7 @@ func UploadPDFFile(c *gin.Context) {
 		Status:     "processed", // เปลี่ยนสถานะเป็น processed หลังจาก OCR เสร็จสิ้น
 		UserID:     userIDUint,
 		Text:       ocrText, // เพิ่มข้อมูลข้อความที่ได้จาก OCR และการตรวจสอบคำ
+	    TextCorrect: checkedText,
 	}
 
 	// บันทึกข้อมูลลงฐานข้อมูล
