@@ -49,12 +49,14 @@ func RunOCR(pdfBytes []byte) (string, error) {
 		return "", fmt.Errorf("OCR API returned status %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
+	// เพิ่มการตรวจสอบคีย์ในการตอบกลับ
 	var result map[string]interface{}
-	if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&result); err != nil {
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
 		return "", err
 	}
 
-	text, ok := result["text"].(string)
+	// ตรวจสอบคีย์ที่ใช้ในการดึงข้อมูล
+	text, ok := result["ocrText"].(string)
 	if !ok {
 		return "", fmt.Errorf("failed to get OCR text from response")
 	}

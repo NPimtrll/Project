@@ -15,6 +15,7 @@ type PDFFile struct {
 	Status     string
 	Source     string // 'uploaded', 'converted_from_image'
 	Text       string  
+	TextCorrect string  // เพิ่มคอลัมน์ TextCorrect
 
 	UserID *uint
 	User   User `gorm:"foreignKey:UserID"`
