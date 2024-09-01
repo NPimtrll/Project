@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 )
@@ -57,6 +58,9 @@ func RunOCR(pdfBytes []byte) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("failed to get OCR text from response")
 	}
+
+	// เพิ่ม log เพื่อตรวจสอบผลลัพธ์จาก OCR
+	log.Printf("OCR Text: %s", text)
 
 	return text, nil
 }

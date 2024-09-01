@@ -14,27 +14,30 @@ interface LoginResponse {
 }
 
 async function getAudioFilesByUserId(userId: number): Promise<IAudioFile[]> {
-  const response = await fetch(`${apiUrl}/users/${userId}/audio_files`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch audio files');
-  }
-  
-  const data = await response.json();
-  
-  // Debugging: Log the result to verify the content
-  console.log('Audio Files Data:', data);
-  
-  // Check if data is an array
-  if (data) {
-    return data.data
-  } else {
-    throw new Error('Unexpected data format');
+  try {
+    const response = await fetch(`${apiUrl}/users/${userId}/audio_files`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch audio files');
+    }
+
+    const data = await response.json();
+
+    // Debugging: Log the result to verify the content
+    console.log('Audio Files Data:', data);
+
+    // Check if data is in the expected format
+    if (Array.isArray(data)) {
+      return data; // Return the array directly if it's in the expected format
+    } else if (data && Array.isArray(data.data)) {
+      return data.data; // Return the data if it has a data field that is an array
+    } else {
+      throw new Error('Unexpected data format');
+    }
+  } catch (error) {
+    console.error('Error fetching audio files:', error);
+    throw error; // Rethrow the error to handle it in the calling function
   }
 }
-
-
-
-
 
 // Audio File CRUD operations
 // เพิ่มฟังก์ชันการดึงข้อมูลไฟล์เสียงของ PDF

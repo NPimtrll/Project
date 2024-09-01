@@ -58,6 +58,9 @@ func UploadPDFFile(c *gin.Context) {
 		return
 	}
 
+	// เพิ่ม log เพื่อตรวจสอบผลลัพธ์จาก OCR
+	log.Printf("Received OCR Text: %s", ocrText)
+
 	// // ตรวจสอบว่าการตรวจสอบการสะกดคำสำเร็จหรือไม่
 	// checkedText, err := llm.SpellCheck(ocrText)
 	// if err != nil {

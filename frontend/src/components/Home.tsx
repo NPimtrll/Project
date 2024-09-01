@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Container, Button, Typography, CircularProgress, Grid, LinearProgress, Box } from '@mui/material';
-import GetAppIcon from '@mui/icons-material/GetApp';
+import { Box, Button, Typography, LinearProgress } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import LoopIcon from '@mui/icons-material/Loop';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { uploadPDF } from '../services/http/index';
-import { apiUrl } from '../services/http/index'; // เพิ่มการ import apiUrl
-import axios from 'axios';
-
+import { apiUrl } from '../services/http/index';
 
 const Home: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -34,127 +34,278 @@ const Home: React.FC = () => {
   const uploadFile = async (file: File) => {
     setLoading(true);
     setProgress(0);
-  
+
     try {
-      // เริ่มการอัพเดต progress จาก 0% ถึง 80%
       let progressInterval = setInterval(() => {
         setProgress(prev => {
           if (prev >= 99) {
-            clearInterval(progressInterval); // หยุดที่ 80%
+            clearInterval(progressInterval);
             return 99;
           }
-          return prev + 1; // เพิ่มขึ้นทีละ 1% เพื่อทำให้โปรเกรสสมูท
+          return prev + 1;
         });
-      }, 100); // ทุกๆ 100ms จะเพิ่มขึ้นทีละ 1%
-  
-      // เรียกใช้การอัพโหลดไฟล์ PDF
+      }, 100);
+
       const uploadResponse = await uploadPDF(file);
-  
-      console.log('Upload Response:', uploadResponse); // Debugging
-  
-      setUploadMessage('PDF uploaded successfully');
+
+      console.log('Upload Response:', uploadResponse);
+
+      setUploadMessage('PDF uploaded successfully!!');
       setPdfText(uploadResponse.Text || null);
-      
-      // ปรับปรุง URL เพื่อดึงไฟล์เสียง
+
       if (uploadResponse.audioUrl) {
-        setAudioUrl(`${apiUrl}${uploadResponse.audioUrl.replace('\\', '/')}`);
+        const url = `${apiUrl}${uploadResponse.audioUrl.replace('\\', '/')}`;
+        setAudioUrl(url);
+
+        // Automatically download the audio file
+        const response = await fetch(url);
+        if (response.ok) {
+          const blob = await response.blob();
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = downloadUrl;
+          a.download = selectedFile?.name.replace('.pdf', '.wav') || 'audio.wav';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(downloadUrl);
+        }
       } else {
         setAudioUrl(null);
       }
-  
-      // เมื่ออัพโหลดเสร็จสมบูรณ์ให้ปรับโปรเกรสเป็น 100%
+
       setProgress(100);
-  
+
     } catch (error) {
       setUploadMessage('Error uploading file');
     } finally {
       setLoading(false);
     }
   };
-  
-
-  const handleDownload = async () => {
-    if (audioUrl) {
-      try {
-        const response = await fetch(audioUrl);
-
-        if (!response.ok) {
-          throw new Error('Failed to download audio file');
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = selectedFile?.name.replace('.pdf', '.wav') || 'audio.wav'; // ตั้งชื่อไฟล์ดาวน์โหลด
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      } catch (error) {
-        console.error('Error downloading file:', error);
-      }
-    }
-  };
 
   return (
-    <Container>
-      <Typography variant="h4" gutterBottom>Home</Typography>
-      <Typography variant="subtitle1" gutterBottom>Convert PDF to Audio</Typography>
-
-      <Grid container spacing={2} alignItems="center">
-        <Grid item xs={12} md={6} sx={{ border: '2px dashed #ccc', padding: '20px', textAlign: 'center', position: 'relative' }}>
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={handleFileChange}
-            style={{ display: 'none' }}
-            id="pdf-upload"
-          />
-          <label htmlFor="pdf-upload" style={{ cursor: 'pointer' }}>
-            <CloudUploadIcon fontSize="large" color="primary" />
-            <Typography variant="body1" sx={{ marginTop: 1 }}>Drop PDF Here</Typography>
-          </label>
-          {selectedFile && <Typography variant="subtitle1">Uploaded file: {selectedFile.name}</Typography>}
+    <Box>
+      <Box 
+        sx={{ 
+          width: '100vw',
+          height: '100vh',
+          overflow: 'hidden',
+          backgroundImage: `url('./background.png')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          textAlign: 'center',
+          position: 'relative',
+        }}
+      >
+        <Box 
+          sx={{ 
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 1,
+          }} 
+        />
+        
+        <Box sx={{ zIndex: 2, position: 'relative', width: '80%', maxWidth: '600px' }}>
+          <Typography variant="h2" fontWeight="bold" gutterBottom color="#fff">Convert PDFs to Audio</Typography>
+          <Typography variant="h5" gutterBottom color="#fff">Effortlessly transform your PDFs into audio files</Typography>
+          
+          <Box sx={{ border: '2px dashed #fff', borderRadius: '10px', p: 3, mb: 2 }}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => document.getElementById('pdf-upload')?.click()}
+              startIcon={<CloudUploadIcon />}
+              sx={{ backgroundColor: '#6A0DAD', borderRadius: '6px' }}
+            >
+              Drag & Drop or Click to Browse
+            </Button>
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={handleFileChange}
+              style={{ display: 'none' }}
+              id="pdf-upload"
+            />
+            <Typography color="#fff" mt={2}>Or, select a PDF file from your computer</Typography>
+          </Box>
+    
           {loading && (
-            <CircularProgress size={60} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-          )}
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          {loading && (
-            <Box sx={{ width: '100%', marginTop: 2 }}>
+            <Box sx={{ width: '100%', mt: 2 }}>
               <LinearProgress variant="determinate" value={progress} />
-              <Typography variant="body2" color="textSecondary">{`${Math.round(progress)}%`}</Typography>
+              <Typography variant="body1" color="#fff" mt={1}>Uploading... {progress}%</Typography>
             </Box>
           )}
-          {audioUrl && !loading && (
-            <>
-              <audio controls src={audioUrl} style={{ width: '100%' }}></audio>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleDownload}
-                startIcon={<GetAppIcon />}
-                style={{ marginTop: 10 }}
-              >
-                Download Audio File
-              </Button>
-            </>
-          )}
-
+    
           {uploadMessage && (
-            <Typography variant="subtitle1" color={uploadMessage.includes('Error') ? 'error' : 'primary'}>{uploadMessage}</Typography>
+            <Typography variant="h6" color="#fff" mt={2}>{uploadMessage}</Typography>
           )}
-          {pdfText && (
-            <Box sx={{ marginTop: 2 }}>
-              <Typography variant="h6">Extracted Text from PDF:</Typography>
-              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{pdfText}</Typography>
+    
+          {audioUrl && selectedFile && (
+            <Box sx={{ mt: 2 }}>
+              <Typography color="#fff" mt={1}>
+                Your audio file, "{selectedFile.name.replace('.pdf', '.wav')}", has been successfully downloaded! Listen to a 25-second preview here.
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                <audio controls src={audioUrl} />
+              </Box>
             </Box>
           )}
-        </Grid>
-      </Grid>
-    </Container>
+        </Box>
+      </Box>
+
+      {/* How it Works Section */}
+      <Box 
+        sx={{ 
+          backgroundColor: '#fff',
+          padding: '4rem 2rem',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <Typography variant="h3" fontWeight="bold" color="#000" mb={4}>How it Works</Typography>
+        
+        <Box 
+          sx={{ 
+            display: 'flex',
+            justifyContent: 'space-around',
+            flexWrap: 'wrap',
+            width: '100%',
+            maxWidth: '900px',
+          }}
+        >
+          {/* Step 1 */}
+          <Box sx={{ textAlign: 'center' }}>
+            <ArrowUpwardIcon sx={{ fontSize: '4rem', color: '#6A0DAD' }} />
+            <Typography variant="h6" color="#000" mt={2}>Step 1: Upload your PDF</Typography>
+          </Box>
+
+          {/* Step 2 */}
+          <Box sx={{ textAlign: 'center' }}>
+            <LoopIcon sx={{ fontSize: '4rem', color: '#6A0DAD' }} />
+            <Typography variant="h6" color="#000" mt={2}>Step 2: Click 'Convert'</Typography>
+          </Box>
+
+          {/* Step 3 */}
+          <Box sx={{ textAlign: 'center' }}>
+            <VolumeUpIcon sx={{ fontSize: '4rem', color: '#6A0DAD' }} />
+            <Typography variant="h6" color="#000" mt={2}>Step 3: Enjoy your Audio</Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Features Section */}
+      <Box 
+        sx={{ 
+          backgroundColor: '#fff',
+          padding: '4rem 2rem',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <Typography variant="h3" fontWeight="bold" color="#000" mb={4}>Our Features</Typography>
+        
+        <Box 
+          sx={{ 
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            width: '100%',
+            maxWidth: '1200px',
+          }}
+        >
+          {/* Feature 1: Smart Learning */}
+          <Box 
+            sx={{ 
+              flex: '1 1 45%',
+              maxWidth: '45%',
+              border: '1px solid #d0d0d0',
+              borderRadius: '8px',
+              p: 3,
+              mb: 4,
+              boxSizing: 'border-box',
+            }}
+          >
+            <Typography variant="h6" fontWeight="bold" color="#000" mb={2}>
+              Smart Learning
+            </Typography>
+            <Typography variant="body1" color="#666">
+              Our algorithms are refined and proofread to ensure a seamless listening experience.
+            </Typography>
+          </Box>
+
+          {/* Feature 2: User Library */}
+          <Box 
+            sx={{ 
+              flex: '1 1 45%',
+              maxWidth: '45%',
+              border: '1px solid #d0d0d0',
+              borderRadius: '8px',
+              p: 3,
+              mb: 4,
+              boxSizing: 'border-box',
+            }}
+          >
+            <Typography variant="h6" fontWeight="bold" color="#000" mb={2}>
+              User Library
+            </Typography>
+            <Typography variant="body1" color="#666">
+              Store all your converted files in your personal library for easy access.
+            </Typography>
+          </Box>
+
+          {/* Feature 3: Custom Playback */}
+          <Box 
+            sx={{ 
+              flex: '1 1 45%',
+              maxWidth: '45%',
+              border: '1px solid #d0d0d0',
+              borderRadius: '8px',
+              p: 3,
+              mb: 4,
+              boxSizing: 'border-box',
+            }}
+          >
+            <Typography variant="h6" fontWeight="bold" color="#000" mb={2}>
+              Custom Playback
+            </Typography>
+            <Typography variant="body1" color="#666">
+              Adjust playback speed and choose from a variety of voices for your convenience.
+            </Typography>
+          </Box>
+
+          {/* Feature 4: No Hidden Fees */}
+          <Box 
+            sx={{ 
+              flex: '1 1 45%',
+              maxWidth: '45%',
+              border: '1px solid #d0d0d0',
+              borderRadius: '8px',
+              p: 3,
+              mb: 4,
+              boxSizing: 'border-box',
+            }}
+          >
+            <Typography variant="h6" fontWeight="bold" color="#000" mb={2}>
+              No Hidden Fees
+            </Typography>
+            <Typography variant="body1" color="#666">
+              Enjoy our services with a free-to-use model and no unexpected costs.
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 
