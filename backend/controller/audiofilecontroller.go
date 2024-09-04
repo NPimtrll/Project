@@ -8,12 +8,24 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GET /users/:user_id/audio_files
+// GET /users/audio_files
 func AudioFilesByUserId(c *gin.Context) {
-	userID := c.Param("user_id")
+	// ดึง UserID จาก context
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+		return
+	}
+
+	// ตรวจสอบว่าค่า userID เป็นประเภทที่ถูกต้องหรือไม่
+	userIDUint, ok := userID.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+		return
+	}
 
 	var audioFiles []entity.AudioFile
-	if err := entity.DB().Where("user_id = ?", userID).Find(&audioFiles).Error; err != nil {
+	if err := entity.DB().Where("user_id = ?", userIDUint).Find(&audioFiles).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

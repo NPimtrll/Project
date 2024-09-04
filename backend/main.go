@@ -56,7 +56,7 @@ func main() {
 		protected.GET("/pdf_files", controller.ListPDFFiles)
 		protected.DELETE("/pdf_files/:id", controller.DeletePDFFile)
 
-		protected.GET("/users/:user_id/audio_files", controller.AudioFilesByUserId) 
+		protected.GET("/users/audio_files", controller.AudioFilesByUserId) 
 		protected.POST("/audio_files", controller.CreateAudioFile)
 		protected.GET("/audio_file/:id", controller.GetAudioFile)
 		protected.GET("/audio_files", controller.ListAudioFiles)
