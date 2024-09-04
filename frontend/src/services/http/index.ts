@@ -13,9 +13,17 @@ interface LoginResponse {
   user: IUser;
 }
 
-async function getAudioFilesByUserId(userId: number): Promise<IAudioFile[]> {
+async function getAudioFilesByUserId(): Promise<IAudioFile[]> {
+  const authToken = localStorage.getItem('authToken'); // Ensure 'authToken' is the correct key name
+
   try {
-    const response = await fetch(`${apiUrl}/users/${userId}/audio_files`);
+    const requestOptions: RequestInit = {
+      method: 'GET',
+      headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {},
+    };
+
+    const response = await fetch(`${apiUrl}/users/audio_files`, requestOptions); // Adjust the endpoint as needed
+    
     if (!response.ok) {
       throw new Error('Failed to fetch audio files');
     }
@@ -38,6 +46,7 @@ async function getAudioFilesByUserId(userId: number): Promise<IAudioFile[]> {
     throw error; // Rethrow the error to handle it in the calling function
   }
 }
+
 
 // Audio File CRUD operations
 // เพิ่มฟังก์ชันการดึงข้อมูลไฟล์เสียงของ PDF

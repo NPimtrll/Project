@@ -14,7 +14,7 @@ const Collection: React.FC = () => {
     const fetchAudioFiles = async () => {
       if (userId) {
         try {
-          const files = await getAudioFilesByUserId(userId);
+          const files = await getAudioFilesByUserId();
           if (files) {
             setAudioFiles(files);
           } else {
