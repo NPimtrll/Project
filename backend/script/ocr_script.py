@@ -9,7 +9,7 @@ from pdf_to_image import pdf_to_images  # Import pdf_to_images function
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = 'E:/Project/backend/uploads'
+UPLOAD_FOLDER = 'C:/Users/msi01/Desktop/Project/backend/uploads/photo'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 

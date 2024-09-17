@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/NPimtrll/Project/controller"
 	"github.com/NPimtrll/Project/entity"
@@ -13,6 +14,52 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
+
+func uploadAudiotest(c *gin.Context) {
+	// รับไฟล์จาก request
+	file, _, err := c.Request.FormFile("audio")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	defer file.Close()
+
+	// สร้างไฟล์ใหม่ในโฟลเดอร์ uploads
+	out, err := os.Create("./uploads/test/audio-file.wav") // เปลี่ยนชื่อไฟล์และตำแหน่งตามต้องการ
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create file"})
+		return
+	}
+	defer out.Close()
+
+	// คัดลอกเนื้อหาจาก file ไปยังไฟล์ใหม่
+	_, err = out.ReadFrom(file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+		return
+	}
+
+	// ส่ง URL ของไฟล์ที่อัปโหลดกลับไปให้ frontend
+	fileURL := "http://localhost:8080/uploads/audio-file.wav"
+	c.JSON(http.StatusOK, gin.H{"url": fileURL})
+}
+func listAudioFiles(c *gin.Context) {
+	files, err := filepath.Glob("./uploads/test/*")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list files"})
+		return
+	}
+
+	// สร้าง URL สำหรับไฟล์
+	var fileUrls []string
+	for _, file := range files {
+		fileName := filepath.Base(file)
+		fileUrl := "http://localhost:8080/uploads/test/" + fileName
+		fileUrls = append(fileUrls, fileUrl)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"files": fileUrls})
+}
 
 func main() {
 	entity.SetupDatabase()
@@ -111,7 +158,11 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"ocr_output": ocrOutput})
 		})
 	}
-
+	r.Static("/uploads/test", "./uploads/test")
+	// กำหนด API Endpoint ที่จะลิสต์ไฟล์ทั้งหมด
+	r.GET("/list-audio-files", listAudioFiles)
+	r.POST("/uploadtest", uploadAudiotest)
+	// r.Static("/uploads", "./uploads")
 	r.Run()
 }
 

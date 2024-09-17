@@ -1,15 +1,16 @@
 package controller
 
 import (
+	// "bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
-	"io"
 
 	"github.com/NPimtrll/Project/entity"
 	"github.com/gin-gonic/gin"
@@ -42,15 +43,16 @@ func TextToSpeechChunk(text string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Use the API key from the environment variable
-    apiKey := os.Getenv("HUGGING_FACE_API_KEY")
-    if apiKey == "" {
-        return nil, fmt.Errorf("HUGGING_FACE_API_KEY is not set")
-    }
 
-    req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
-    req.Header.Set("Content-Type", "application/json")
-	
+	// Use the API key from the environment variable
+	apiKey := os.Getenv("HUGGING_FACE_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("HUGGING_FACE_API_KEY is not set")
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+	req.Header.Set("Content-Type", "application/json")
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -72,7 +74,7 @@ func TextToSpeechChunk(text string) ([]byte, error) {
 }
 
 func TextToSpeechLongText(text string) ([]byte, error) {
-	const chunkSize = 500 // ปรับขนาด chunk ตามขีดจำกัดของ API
+	const chunkSize = 500
 	textChunks := SplitText(text, chunkSize)
 
 	var audioData []byte
@@ -114,10 +116,7 @@ func CreateConversion(c *gin.Context) {
 		return
 	}
 
-	var audioData []byte
-	var err error
-
-	audioData, err = TextToSpeechLongText(pdfFile.TextCorrect) //ปรับตรงนี้
+	audioData, err := TextToSpeechLongText(pdfFile.TextCorrect)
 	if err != nil {
 		conversion.Status = "failed"
 		conversion.ErrorMessage = err.Error()
@@ -125,9 +124,10 @@ func CreateConversion(c *gin.Context) {
 		return
 	}
 
-	audioFilename := filepath.Base(pdfFile.Filename) + ".wav"
+	audioFilename := filepath.Base(pdfFile.Filename) + ".flac"
 	audioPath := filepath.Join("uploads/audio", audioFilename)
 
+	// Create directory if it doesn't exist
 	if err := os.MkdirAll(filepath.Dir(audioPath), 0755); err != nil {
 		conversion.Status = "failed"
 		conversion.ErrorMessage = err.Error()
@@ -135,20 +135,33 @@ func CreateConversion(c *gin.Context) {
 		return
 	}
 
-	if err := os.WriteFile(audioPath, audioData, 0644); err != nil {
+	// Open the file for writing
+	file, err := os.OpenFile(audioPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		conversion.Status = "failed"
+		conversion.ErrorMessage = err.Error()
+		entity.DB().Save(&conversion)
+		return
+	}
+	defer file.Close()
+
+	// Use io.Copy instead of bufio.NewWriter
+	_, err = io.Copy(file, bytes.NewReader(audioData))
+	if err != nil {
 		conversion.Status = "failed"
 		conversion.ErrorMessage = err.Error()
 		entity.DB().Save(&conversion)
 		return
 	}
 
+	// Save the audio file metadata to the database
 	audioFile := entity.AudioFile{
 		Filename:       audioFilename,
 		FilePath:       audioPath,
 		Status:         "generated",
 		Size:           int64(len(audioData)),
 		ConversionDate: time.Now(),
-		Format:         "wav",
+		Format:         "flac",
 		Duration:       0,
 		PDFID:          conversion.PDFID,
 		UserID:         conversion.UserID,
@@ -161,8 +174,7 @@ func CreateConversion(c *gin.Context) {
 		return
 	}
 
-	// Use the created audioFile directly to update conversion
-	fmt.Print("&audioFile.ID", audioFile.ID)
+	// Update conversion with audio file information
 	conversion.AudioID = &audioFile.ID
 	conversion.Status = "completed"
 	conversion.ErrorMessage = ""

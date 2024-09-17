@@ -64,7 +64,7 @@ const Home: React.FC = () => {
           const downloadUrl = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = downloadUrl;
-          a.download = selectedFile?.name.replace('.pdf', '.wav') || 'audio.wav';
+          a.download = selectedFile?.name.replace('.pdf', '.flac') || 'audio.flac';
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
