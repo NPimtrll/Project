@@ -87,6 +87,8 @@ func TextToSpeechLongText(text string) ([]byte, error) {
 	return audioData, nil
 }
 
+
+
 func CreateConversion(c *gin.Context) {
 	var conversion entity.Conversion
 	if err := c.ShouldBindJSON(&conversion); err != nil {
@@ -125,7 +127,7 @@ func CreateConversion(c *gin.Context) {
 		return
 	}
 
-	audioFilename := filepath.Base(pdfFile.Filename) + ".wav"
+	audioFilename := filepath.Base(pdfFile.Filename) + ".mp3"
 	audioPath := filepath.Join("uploads/audio", audioFilename)
 
 	if err := os.MkdirAll(filepath.Dir(audioPath), 0755); err != nil {
@@ -142,14 +144,15 @@ func CreateConversion(c *gin.Context) {
 		return
 	}
 
+
 	audioFile := entity.AudioFile{
 		Filename:       audioFilename,
 		FilePath:       audioPath,
 		Status:         "generated",
 		Size:           int64(len(audioData)),
 		ConversionDate: time.Now(),
-		Format:         "wav",
-		Duration:       0,
+		Format:         "mp3",
+		Duration:       0.0,
 		PDFID:          conversion.PDFID,
 		UserID:         conversion.UserID,
 	}

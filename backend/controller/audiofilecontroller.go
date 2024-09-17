@@ -74,13 +74,24 @@ func ListAudioFiles(c *gin.Context) {
 
 // DELETE /audio_files/:id
 func DeleteAudioFile(c *gin.Context) {
-	id := c.Param("id")
-	if tx := entity.DB().Exec("DELETE FROM audio_files WHERE id = ?", id); tx.RowsAffected == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "audio file not found"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"data": id})
+    id := c.Param("id")
+    var audioFile entity.AudioFile
+
+    // ค้นหา audio file ที่ต้องการลบ
+    if err := entity.DB().First(&audioFile, id).Error; err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "audio file not found"})
+        return
+    }
+
+    // ลบแบบ soft delete
+    if err := entity.DB().Delete(&audioFile).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete audio file"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"data": id})
 }
+
 
 // PATCH /audio_files
 func UpdateAudioFile(c *gin.Context) {

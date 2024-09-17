@@ -84,7 +84,7 @@ async function updateAudioFile(id: number, audioFile: IAudioFile): Promise<IAudi
 }
 
 async function deleteAudioFile(id: number): Promise<void> {
-  await fetch(`${apiUrl}/audio-file/${id}`, { method: "DELETE" });
+  await fetch(`${apiUrl}/audio_files/${id}`, { method: "DELETE" });
 }
 
 

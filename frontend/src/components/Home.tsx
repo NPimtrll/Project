@@ -26,6 +26,7 @@ const Home: React.FC = () => {
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
+      resetState(); // รีเซ็ต state ก่อนเริ่มอัปโหลดใหม่
       setSelectedFile(event.target.files[0]);
       uploadFile(event.target.files[0]);
     }
@@ -64,7 +65,7 @@ const Home: React.FC = () => {
           const downloadUrl = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = downloadUrl;
-          a.download = selectedFile?.name.replace('.pdf', '.wav') || 'audio.wav';
+          a.download = selectedFile?.name.replace('.pdf', '.mp3') || 'audio.mp3';
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -151,7 +152,7 @@ const Home: React.FC = () => {
           {audioUrl && selectedFile && (
             <Box sx={{ mt: 2 }}>
               <Typography color="#fff" mt={1}>
-                Your audio file, "{selectedFile.name.replace('.pdf', '.wav')}", has been successfully downloaded! Listen to a 25-second preview here.
+                Your audio file, "{selectedFile.name.replace('.pdf', '.mp3')}", has been successfully downloaded! Listen to a 25-second preview here.
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <audio controls src={audioUrl} />
