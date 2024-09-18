@@ -30,7 +30,7 @@ def pdf_to_text(pdf_data):
                 img = Image.open(img_path)
 
                 # Perform OCR on the image
-                ocr_result = pytesseract.image_to_string(img)
+                ocr_result = pytesseract.image_to_string(img, config='--psm 6')
                 if not ocr_result.strip():
                     print(f"OCR failed on image {image_file}. Skipping.")
                     continue

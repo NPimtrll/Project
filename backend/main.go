@@ -124,6 +124,8 @@ func main() {
 		protected.DELETE("/image_files/:id", controller.DeleteImageFile)
 		protected.PATCH("/image_files", controller.UpdateImageFile)
 
+		protected.GET("/textPdf", controller.GetLatestTextCorrect)
+
 		protected.GET("/protected_resource", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "This is a protected resource"})
 		})

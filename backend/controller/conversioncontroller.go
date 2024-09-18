@@ -2,14 +2,14 @@ package controller
 
 import (
 	// "bufio"
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
+	// "bytes"
+	// "encoding/json"
+	// "fmt"
+	// "io"
 	"net/http"
-	"os"
-	"path/filepath"
-	"time"
+	// "os"
+	// "path/filepath"
+	// "time"
 
 
 	"github.com/NPimtrll/Project/entity"
@@ -17,178 +17,180 @@ import (
 	"gorm.io/gorm"
 )
 
-type TextToSpeechRequest struct {
-	Inputs string `json:"inputs"`
-}
 
-func SplitText(text string, chunkSize int) []string {
-	var chunks []string
-	for len(text) > chunkSize {
-		chunks = append(chunks, text[:chunkSize])
-		text = text[chunkSize:]
-	}
-	chunks = append(chunks, text)
-	return chunks
-}
 
-func TextToSpeechChunk(text string) ([]byte, error) {
-	url := "https://api-inference.huggingface.co/models/Nithu/text-to-speech"
-	reqBody := TextToSpeechRequest{Inputs: text}
-	jsonData, err := json.Marshal(reqBody)
-	if err != nil {
-		return nil, err
-	}
+// type TextToSpeechRequest struct {
+// 	Inputs string `json:"inputs"`
+// }
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, err
-	}
+// func SplitText(text string, chunkSize int) []string {
+// 	var chunks []string
+// 	for len(text) > chunkSize {
+// 		chunks = append(chunks, text[:chunkSize])
+// 		text = text[chunkSize:]
+// 	}
+// 	chunks = append(chunks, text)
+// 	return chunks
+// }
 
-	// Use the API key from the environment variable
-	apiKey := os.Getenv("HUGGING_FACE_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("HUGGING_FACE_API_KEY is not set")
-	}
+// func TextToSpeechChunk(text string) ([]byte, error) {
+// 	url := "https://api-inference.huggingface.co/models/Nithu/text-to-speech"
+// 	reqBody := TextToSpeechRequest{Inputs: text}
+// 	jsonData, err := json.Marshal(reqBody)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
-	req.Header.Set("Content-Type", "application/json")
+// 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+// 	// Use the API key from the environment variable
+// 	apiKey := os.Getenv("HUGGING_FACE_API_KEY")
+// 	if apiKey == "" {
+// 		return nil, fmt.Errorf("HUGGING_FACE_API_KEY is not set")
+// 	}
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("TextToSpeech API error: %s - %s", resp.Status, body)
-	}
+// 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+// 	req.Header.Set("Content-Type", "application/json")
 
-	audioData, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
+// 	client := &http.Client{}
+// 	resp, err := client.Do(req)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer resp.Body.Close()
 
-	return audioData, nil
-}
+// 	if resp.StatusCode != http.StatusOK {
+// 		body, _ := io.ReadAll(resp.Body)
+// 		return nil, fmt.Errorf("TextToSpeech API error: %s - %s", resp.Status, body)
+// 	}
 
-func TextToSpeechLongText(text string) ([]byte, error) {
-	const chunkSize = 500
-	textChunks := SplitText(text, chunkSize)
+// 	audioData, err := io.ReadAll(resp.Body)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	var audioData []byte
-	for _, chunk := range textChunks {
-		chunkAudioData, err := TextToSpeechChunk(chunk)
-		if err != nil {
-			return nil, err
-		}
-		audioData = append(audioData, chunkAudioData...)
-	}
+// 	return audioData, nil
+// }
 
-	return audioData, nil
-}
+// func TextToSpeechLongText(text string) ([]byte, error) {
+// 	const chunkSize = 500
+// 	textChunks := SplitText(text, chunkSize)
 
-func CreateConversion(c *gin.Context) {
-	var conversion entity.Conversion
-	if err := c.ShouldBindJSON(&conversion); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+// 	var audioData []byte
+// 	for _, chunk := range textChunks {
+// 		chunkAudioData, err := TextToSpeechChunk(chunk)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		audioData = append(audioData, chunkAudioData...)
+// 	}
 
-	if conversion.PDFID == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "PDFID is required"})
-		return
-	}
+// 	return audioData, nil
+// }
 
-	var pdfFile entity.PDFFile
-	if err := entity.DB().First(&pdfFile, conversion.PDFID).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "PDF file not found"})
-		return
-	}
+// func CreateConversion(c *gin.Context) {
+// 	var conversion entity.Conversion
+// 	if err := c.ShouldBindJSON(&conversion); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// 		return
+// 	}
 
-	conversion.Status = "in_progress"
-	conversion.ConversionDate = time.Now()
+// 	if conversion.PDFID == nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "PDFID is required"})
+// 		return
+// 	}
 
-	// Save initial conversion status to database
-	if err := entity.DB().Save(&conversion).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save initial conversion status"})
-		return
-	}
+// 	var pdfFile entity.PDFFile
+// 	if err := entity.DB().First(&pdfFile, conversion.PDFID).Error; err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "PDF file not found"})
+// 		return
+// 	}
 
-	audioData, err := TextToSpeechLongText(pdfFile.TextCorrect)
-	if err != nil {
-		conversion.Status = "failed"
-		conversion.ErrorMessage = err.Error()
-		entity.DB().Save(&conversion)
-		return
-	}
+// 	conversion.Status = "in_progress"
+// 	conversion.ConversionDate = time.Now()
 
-	audioFilename := filepath.Base(pdfFile.Filename) + ".flac"
-	audioPath := filepath.Join("uploads/audio", audioFilename)
+// 	// Save initial conversion status to database
+// 	if err := entity.DB().Save(&conversion).Error; err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save initial conversion status"})
+// 		return
+// 	}
 
-	// Create directory if it doesn't exist
-	if err := os.MkdirAll(filepath.Dir(audioPath), 0755); err != nil {
-		conversion.Status = "failed"
-		conversion.ErrorMessage = err.Error()
-		entity.DB().Save(&conversion)
-		return
-	}
+// 	audioData, err := TextToSpeechLongText(pdfFile.TextCorrect)
+// 	if err != nil {
+// 		conversion.Status = "failed"
+// 		conversion.ErrorMessage = err.Error()
+// 		entity.DB().Save(&conversion)
+// 		return
+// 	}
 
-	// Open the file for writing
-	file, err := os.OpenFile(audioPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		conversion.Status = "failed"
-		conversion.ErrorMessage = err.Error()
-		entity.DB().Save(&conversion)
-		return
-	}
-	defer file.Close()
+// 	audioFilename := filepath.Base(pdfFile.Filename) + ".flac"
+// 	audioPath := filepath.Join("uploads/audio", audioFilename)
 
-	// Use io.Copy instead of bufio.NewWriter
-	_, err = io.Copy(file, bytes.NewReader(audioData))
-	if err != nil {
-		conversion.Status = "failed"
-		conversion.ErrorMessage = err.Error()
-		entity.DB().Save(&conversion)
-		return
-	}
+// 	// Create directory if it doesn't exist
+// 	if err := os.MkdirAll(filepath.Dir(audioPath), 0755); err != nil {
+// 		conversion.Status = "failed"
+// 		conversion.ErrorMessage = err.Error()
+// 		entity.DB().Save(&conversion)
+// 		return
+// 	}
 
-	// Save the audio file metadata to the database
-	audioFile := entity.AudioFile{
-		Filename:       audioFilename,
-		FilePath:       audioPath,
-		Status:         "generated",
-		Size:           int64(len(audioData)),
-		ConversionDate: time.Now(),
-		Format:         "flac",
-		Duration:       0,
-		PDFID:          conversion.PDFID,
-		UserID:         conversion.UserID,
-	}
+// 	// Open the file for writing
+// 	file, err := os.OpenFile(audioPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+// 	if err != nil {
+// 		conversion.Status = "failed"
+// 		conversion.ErrorMessage = err.Error()
+// 		entity.DB().Save(&conversion)
+// 		return
+// 	}
+// 	defer file.Close()
 
-	if err := entity.DB().Create(&audioFile).Error; err != nil {
-		conversion.Status = "failed"
-		conversion.ErrorMessage = err.Error()
-		entity.DB().Save(&conversion)
-		return
-	}
+// 	// Use io.Copy instead of bufio.NewWriter
+// 	_, err = io.Copy(file, bytes.NewReader(audioData))
+// 	if err != nil {
+// 		conversion.Status = "failed"
+// 		conversion.ErrorMessage = err.Error()
+// 		entity.DB().Save(&conversion)
+// 		return
+// 	}
 
-	// Update conversion with audio file information
-	conversion.AudioID = &audioFile.ID
-	conversion.Status = "completed"
-	conversion.ErrorMessage = ""
+// 	// Save the audio file metadata to the database
+// 	audioFile := entity.AudioFile{
+// 		Filename:       audioFilename,
+// 		FilePath:       audioPath,
+// 		Status:         "generated",
+// 		Size:           int64(len(audioData)),
+// 		ConversionDate: time.Now(),
+// 		Format:         "flac",
+// 		Duration:       0,
+// 		PDFID:          conversion.PDFID,
+// 		UserID:         conversion.UserID,
+// 	}
 
-	if err := entity.DB().Save(&conversion).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update conversion record"})
-		return
-	}
+// 	if err := entity.DB().Create(&audioFile).Error; err != nil {
+// 		conversion.Status = "failed"
+// 		conversion.ErrorMessage = err.Error()
+// 		entity.DB().Save(&conversion)
+// 		return
+// 	}
 
-	audioUrl := fmt.Sprintf("/uploads/audio/%s", audioFilename)
+// 	// Update conversion with audio file information
+// 	conversion.AudioID = &audioFile.ID
+// 	conversion.Status = "completed"
+// 	conversion.ErrorMessage = ""
 
-	// Send success response with audio URL
-	c.JSON(http.StatusOK, gin.H{"message": "Conversion completed", "data": conversion, "audioUrl": audioUrl})
-}
+// 	if err := entity.DB().Save(&conversion).Error; err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update conversion record"})
+// 		return
+// 	}
+
+// 	audioUrl := fmt.Sprintf("/uploads/audio/%s", audioFilename)
+
+// 	// Send success response with audio URL
+// 	c.JSON(http.StatusOK, gin.H{"message": "Conversion completed", "data": conversion, "audioUrl": audioUrl})
+// }
 
 // GET /conversion/:id/status
 func GetConversionStatus(c *gin.Context) {

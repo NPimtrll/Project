@@ -293,6 +293,33 @@ async function loginUser(credentials: { username: string; password: string }): P
 
   return response.json();
 }
+// async function getTextCorrect(): Promise<IPDFFile[]> {
+//   const response = await fetch(`${apiUrl}/textPdf`);
+//   return response.json();
+// }
+async function getTextCorrect() {
+  const requestOptions = {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  };
+
+  let res = await fetch(`${apiUrl}/textPdf`, requestOptions)
+    .then((response) => response.json())
+    .then((res) => {
+      if (res.text_correct) {
+        return res.text_correct;
+      } else {
+        return false;
+      }
+    });
+
+  console.log(res)
+  return res;
+  
+}
+
 
 export {
   getAudioFilesByPDFId,
@@ -325,5 +352,6 @@ export {
   updateConversion,
   deleteConversion,
   getConversionStatus,
-  loginUser
+  loginUser,
+  getTextCorrect
 };

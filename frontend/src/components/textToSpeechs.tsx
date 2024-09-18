@@ -97,14 +97,14 @@ const Try: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [correctedText, setCorrectedText] = useState('');
 
-  const inference = new HfInference("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");
+  const inference = new HfInference("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");
 
   async function query(data: { inputs: string }) {
     const response = await fetch(
       "https://api-inference.huggingface.co/models/Nithu/text-to-speech",
       {
         headers: {
-          Authorization: "Bearer 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",
+          Authorization: "Bearer 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",
         },
         method: "POST",
         body: JSON.stringify(data),

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState ,useEffect} from 'react';
 import { Box, Button, Typography, LinearProgress } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
@@ -6,6 +6,8 @@ import LoopIcon from '@mui/icons-material/Loop';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { uploadPDF } from '../services/http/index';
 import { apiUrl } from '../services/http/index';
+import { getTextCorrect } from '../services/http/index';
+import { IPDFFile } from '../interfaces/IPDFFile';
 
 const Home: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -14,6 +16,8 @@ const Home: React.FC = () => {
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
   const [pdfText, setPdfText] = useState<string | null>(null);
+  const [textcorrect, setTextcorrect] = useState<string | null>(null);
+
 
   const resetState = () => {
     setSelectedFile(null);
@@ -30,11 +34,26 @@ const Home: React.FC = () => {
       uploadFile(event.target.files[0]);
     }
   };
-
+  
+  const query = async (data: { inputs: string }) => {
+    const response = await fetch(
+      "https://api-inference.huggingface.co/models/Nithu/text-to-speech",
+      {
+        headers: {
+          Authorization: "Bearer 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",
+        },
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    );
+    const result = await response.blob();
+    return result;
+  };
+  
   const uploadFile = async (file: File) => {
     setLoading(true);
     setProgress(0);
-
+  
     try {
       let progressInterval = setInterval(() => {
         setProgress(prev => {
@@ -45,43 +64,66 @@ const Home: React.FC = () => {
           return prev + 1;
         });
       }, 100);
-
+  
       const uploadResponse = await uploadPDF(file);
-
       console.log('Upload Response:', uploadResponse);
-
+  
       setUploadMessage('PDF uploaded successfully!!');
       setPdfText(uploadResponse.Text || null);
-
-      if (uploadResponse.audioUrl) {
-        const url = `${apiUrl}${uploadResponse.audioUrl.replace('\\', '/')}`;
-        setAudioUrl(url);
-
-        // Automatically download the audio file
-        const response = await fetch(url);
-        if (response.ok) {
-          const blob = await response.blob();
-          const downloadUrl = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = downloadUrl;
-          a.download = selectedFile?.name.replace('.pdf', '.flac') || 'audio.flac';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          window.URL.revokeObjectURL(downloadUrl);
+  
+      const textCorrectResult = await getText();
+      console.log(textCorrectResult);
+  
+      if (typeof textCorrectResult === 'string') {
+        const audioBlob = await query({ inputs: textCorrectResult });
+        // You can handle audioBlob here if needed
+        if (audioBlob) {
+          const url = window.URL.createObjectURL(audioBlob);
+          setAudioUrl(url);
+          console.log(url)
         }
       } else {
-        setAudioUrl(null);
+        console.error('Expected textcorrect to be a string but got:', textCorrectResult);
       }
-
+  
       setProgress(100);
-
+  
     } catch (error) {
       setUploadMessage('Error uploading file');
     } finally {
       setLoading(false);
     }
   };
+  
+  const getText = async () => {
+    try {
+      const response = await getTextCorrect();
+      if (response && typeof response === 'string') {
+        setTextcorrect(response);
+        return response; // Return the response to ensure it's available
+      } else {
+        setTextcorrect(null);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching text correct:', error);
+      return null;
+    }
+  };
+  
+  
+  // const getText = async () => {
+  //   let response = await getTextCorrect();
+  //   if (response) {
+  //     setTextcorrect(response);
+  //   }
+  //   console.log(response)
+  // };
+  // console.log(textcorrect)
+
+  // useEffect(() => {
+  //   getText();
+  // }, []);
 
   return (
     <Box>
@@ -116,7 +158,8 @@ const Home: React.FC = () => {
         <Box sx={{ zIndex: 2, position: 'relative', width: '80%', maxWidth: '600px' }}>
           <Typography variant="h2" fontWeight="bold" gutterBottom color="#fff">Convert PDFs to Audio</Typography>
           <Typography variant="h5" gutterBottom color="#fff">Effortlessly transform your PDFs into audio files</Typography>
-          
+        
+            
           <Box sx={{ border: '2px dashed #fff', borderRadius: '10px', p: 3, mb: 2 }}>
             <Button
               variant="contained"
@@ -159,7 +202,9 @@ const Home: React.FC = () => {
             </Box>
           )}
         </Box>
+           
       </Box>
+      
 
       {/* How it Works Section */}
       <Box 

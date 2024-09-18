@@ -144,6 +144,29 @@ func UploadPDFFile(c *gin.Context) {
 	})
 }
 
+// GET /TextCorrect
+func GetLatestTextCorrect(c *gin.Context) {
+    var pdfFile entity.PDFFile
+
+    // ดึงเฉพาะฟิลด์ TextCorrect โดยเรียงตาม UploadDate (หรือ id)
+    if err := entity.DB().Select("text_correct").Order("id desc").First(&pdfFile).Error; err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+
+    // ส่งข้อมูล TextCorrect ล่าสุดในรูปแบบ JSON
+    c.JSON(http.StatusOK, gin.H{"text_correct": pdfFile.TextCorrect})
+}
+// func GetLatestTextCorrect(c *gin.Context) {
+// 	var pdfFile []entity.PDFFile
+// 	if err := entity.DB().Raw("SELECT text_correct FROM pdf_files ORDER BY id DESC LIMIT 1").First(&pdfFile).Error; err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// 		return
+// 	}
+// 	c.JSON(http.StatusOK, gin.H{"data": pdfFile})
+// }
+
+
 // GET /pdf_file/:id
 func GetPDFFile(c *gin.Context) {
 	var pdfFile entity.PDFFile
