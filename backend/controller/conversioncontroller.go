@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"io"
@@ -43,14 +44,14 @@ func TextToSpeechChunk(text string) ([]byte, error) {
 		return nil, err
 	}
 	// Use the API key from the environment variable
-    apiKey := os.Getenv("HUGGING_FACE_API_KEY")
-    if apiKey == "" {
-        return nil, fmt.Errorf("HUGGING_FACE_API_KEY is not set")
-    }
+	apiKey := os.Getenv("HUGGING_FACE_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("HUGGING_FACE_API_KEY is not set")
+	}
 
-    req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
-    req.Header.Set("Content-Type", "application/json")
-	
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+	req.Header.Set("Content-Type", "application/json")
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -72,7 +73,7 @@ func TextToSpeechChunk(text string) ([]byte, error) {
 }
 
 func TextToSpeechLongText(text string) ([]byte, error) {
-	const chunkSize = 500 // ปรับขนาด chunk ตามขีดจำกัดของ API
+	const chunkSize = 3500 // ปรับขนาด chunk ตามขีดจำกัดของ API
 	textChunks := SplitText(text, chunkSize)
 
 	var audioData []byte
@@ -86,8 +87,6 @@ func TextToSpeechLongText(text string) ([]byte, error) {
 
 	return audioData, nil
 }
-
-
 
 func CreateConversion(c *gin.Context) {
 	var conversion entity.Conversion
@@ -116,10 +115,8 @@ func CreateConversion(c *gin.Context) {
 		return
 	}
 
-	var audioData []byte
-	var err error
-
-	audioData, err = TextToSpeechLongText(pdfFile.TextCorrect) //ปรับตรงนี้
+	// Call TextToSpeechLongText to process the PDF text and get the audio data
+	audioData, err := TextToSpeechLongText(pdfFile.TextCorrect)
 	if err != nil {
 		conversion.Status = "failed"
 		conversion.ErrorMessage = err.Error()
@@ -127,23 +124,23 @@ func CreateConversion(c *gin.Context) {
 		return
 	}
 
-	audioFilename := filepath.Base(pdfFile.Filename) + ".mp3"
+	audioFilename := strings.TrimSuffix(filepath.Base(pdfFile.Filename), ".pdf") + ".mp3"
 	audioPath := filepath.Join("uploads/audio", audioFilename)
 
+	// สร้างไดเรกทอรีหากไม่มีอยู่
 	if err := os.MkdirAll(filepath.Dir(audioPath), 0755); err != nil {
 		conversion.Status = "failed"
 		conversion.ErrorMessage = err.Error()
 		entity.DB().Save(&conversion)
 		return
 	}
-
+	// บันทึกไฟล์เสียงไปยังโฟลเดอร์ uploads/audio
 	if err := os.WriteFile(audioPath, audioData, 0644); err != nil {
 		conversion.Status = "failed"
 		conversion.ErrorMessage = err.Error()
 		entity.DB().Save(&conversion)
 		return
 	}
-
 
 	audioFile := entity.AudioFile{
 		Filename:       audioFilename,
@@ -177,8 +174,8 @@ func CreateConversion(c *gin.Context) {
 
 	audioUrl := fmt.Sprintf("/uploads/audio/%s", audioFilename)
 
-	// Send success response with audio URL
-	c.JSON(http.StatusOK, gin.H{"message": "Conversion completed", "data": conversion, "audioUrl": audioUrl})
+	// Send the audio URL back to the client
+	c.JSON(http.StatusOK, gin.H{"message": "Conversion completed", "audioUrl": audioUrl})
 }
 
 // GET /conversion/:id/status

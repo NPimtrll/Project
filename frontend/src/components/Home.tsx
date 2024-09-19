@@ -152,7 +152,7 @@ const Home: React.FC = () => {
           {audioUrl && selectedFile && (
             <Box sx={{ mt: 2 }}>
               <Typography color="#fff" mt={1}>
-                Your audio file, "{selectedFile.name.replace('.pdf', '.mp3')}", has been successfully downloaded! Listen to a 25-second preview here.
+                Your audio file, "{selectedFile.name.replace('.pdf', '.mp3')}", has been successfully processed!
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <audio controls src={audioUrl} />
