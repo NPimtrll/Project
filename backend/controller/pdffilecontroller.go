@@ -123,19 +123,20 @@ func UploadPDFFile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to create conversion record: %s", body)})
 		return
 	}
-
+    // อ่าน response จาก CreateConversion API
 	var conversionResponse map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&conversionResponse); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode conversion response"})
 		return
 	}
-
+    
+	// ตรวจสอบว่ามี audioUrl หรือไม่
 	audioUrl, ok := conversionResponse["audioUrl"].(string)
     if !ok {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve audio URL"})
         return
     }
-
+	// ส่ง response กลับไปที่ frontend
 	c.JSON(http.StatusOK, gin.H{
 		"message":    "File uploaded and conversion started successfully",
 		"pdf":        pdf,

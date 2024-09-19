@@ -1,4 +1,3 @@
-# llm.py
 from huggingface_hub import InferenceClient
 from dotenv import load_dotenv
 import os
@@ -13,15 +12,25 @@ client = InferenceClient(
 )
 
 def spell_check(text: str) -> str:
-    prompt = f"Correct the spelling errors in the following message and send only the corrected text, no additional text, especially 'This is the corrected text', and make sure to get the correct text on every line, even if it is repeated: {text}"
+    prompt_template = ("Correct the spelling errors in the following message "
+                       "and send only the corrected text, no additional text: {text}")
+
+    # แบ่งข้อความเป็นส่วนย่อย ๆ เพื่อไม่ให้เกินขนาดการตอบสนองของ LLM
+    max_chunk_size = 1000  # ปรับขนาดได้ตามเหมาะสม
+    chunks = [text[i:i + max_chunk_size] for i in range(0, len(text), max_chunk_size)]
+
+    corrected_text = ""
     try:
-        response = client.chat_completion(
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=1000,  # Adjust the max tokens if needed
-            stream=False  # Get the complete response instead of streaming
-        )
-        corrected_text = response.choices[0].message['content']
+        for chunk in chunks:
+            prompt = prompt_template.format(text=chunk)
+            response = client.chat_completion(
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=1000,
+                stream=False
+            )
+            # รวมข้อความที่แก้ไขแล้ว
+            corrected_text += response.choices[0].message['content']
         return corrected_text
     except Exception as e:
         print(f"An error occurred during spell check: {e}")
-        return text  # Return original text if spell check fails
+        return text  # ถ้าเกิดข้อผิดพลาด ให้คืนข้อความต้นฉบับแทน
