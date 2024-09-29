@@ -36,28 +36,35 @@ func CreateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": user})
 }
 
-// GET /user/:id
 
-func GetUser(c *gin.Context) {
+// GET /user/profile
+func GetUserProfile(c *gin.Context) {
+    // ดึง UserID จาก context
+    userID, exists := c.Get("userID")
+    if !exists {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+        return
+    }
 
-	var user entity.User
+    // ตรวจสอบว่า userID เป็นประเภทที่ถูกต้องหรือไม่
+    userIDUint, ok := userID.(uint)
+    if !ok {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+        return
+    }
 
-	id := c.Param("id")
+    var user entity.User
+    if err := entity.DB().Where("id = ?", userIDUint).First(&user).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
 
-	if err := entity.DB().Raw("SELECT * FROM users WHERE id = ?", id).Scan(&user).Error; err != nil {
-
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-
-		return
-
-	}
-
-	c.JSON(http.StatusOK, gin.H{"data": user})
-
+    // ส่งข้อมูล user กลับไป
+    c.JSON(http.StatusOK, gin.H{"data": user})
 }
 
-// GET /users
 
+// GET /users
 func ListUsers(c *gin.Context) {
 
 	var users []entity.User

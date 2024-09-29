@@ -294,6 +294,38 @@ async function loginUser(credentials: { username: string; password: string }): P
   return response.json();
 }
 
+async function getUserProfile(): Promise<IUser> {
+  const authToken = localStorage.getItem('authToken'); // ตรวจสอบให้แน่ใจว่าใช้ชื่อคีย์ที่ถูกต้อง
+
+  try {
+    const requestOptions: RequestInit = {
+      method: 'GET',
+      headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {},
+    };
+
+    const response = await fetch(`${apiUrl}/user/profile`, requestOptions); // ปรับปรุง endpoint ให้ถูกต้อง
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch user profile');
+    }
+
+    const data = await response.json();
+
+    // Debugging: Log the result to verify the content
+    console.log('User Profile Data:', data);
+
+    // ตรวจสอบว่า data อยู่ในรูปแบบที่คาดไว้
+    if (data && data.data) {
+      return data.data; // ส่งคืนข้อมูลผู้ใช้
+    } else {
+      throw new Error('Unexpected data format');
+    }
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    throw error; // ส่งต่อข้อผิดพลาดไปยังฟังก์ชันที่เรียกใช้
+  }
+}
+
 export {
   getAudioFilesByPDFId,
   getAudioFilesByUserId,
@@ -325,5 +357,6 @@ export {
   updateConversion,
   deleteConversion,
   getConversionStatus,
-  loginUser
+  loginUser,
+  getUserProfile
 };
