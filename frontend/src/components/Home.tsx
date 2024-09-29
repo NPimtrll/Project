@@ -6,6 +6,7 @@ import LoopIcon from '@mui/icons-material/Loop';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { uploadPDF } from '../services/http/index';
 import { apiUrl } from '../services/http/index';
+import ScrollToTopButton from './ScrollToTopButton'; 
 
 const Home: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -29,6 +30,22 @@ const Home: React.FC = () => {
       resetState(); // รีเซ็ต state ก่อนเริ่มอัปโหลดใหม่
       setSelectedFile(event.target.files[0]);
       uploadFile(event.target.files[0]);
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault(); // ป้องกันการกระทำเริ่มต้น
+    event.stopPropagation();
+  };
+  
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault(); // ป้องกันการกระทำเริ่มต้น
+    event.stopPropagation();
+  
+    if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+      resetState(); // รีเซ็ต state ก่อนเริ่มอัปโหลดใหม่
+      setSelectedFile(event.dataTransfer.files[0]);
+      uploadFile(event.dataTransfer.files[0]);
     }
   };
 
@@ -86,6 +103,7 @@ const Home: React.FC = () => {
 
   return (
     <Box>
+      <ScrollToTopButton /> 
       <Box 
         sx={{ 
           width: '100vw',
@@ -118,7 +136,10 @@ const Home: React.FC = () => {
           <Typography variant="h2" fontWeight="bold" gutterBottom color="#fff">Convert PDFs to Audio</Typography>
           <Typography variant="h5" gutterBottom color="#fff">Effortlessly transform your PDFs into audio files</Typography>
           
-          <Box sx={{ border: '2px dashed #fff', borderRadius: '10px', p: 3, mb: 2 }}>
+          <Box sx={{ border: '2px dashed #fff', borderRadius: '10px', p: 3, mb: 2 }}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
             <Button
               variant="contained"
               color="primary"
@@ -164,6 +185,7 @@ const Home: React.FC = () => {
 
       {/* How it Works Section */}
       <Box 
+        id="how-it-works" 
         sx={{ 
           backgroundColor: '#fff',
           padding: '4rem 2rem',

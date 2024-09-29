@@ -6,6 +6,7 @@ const Footer: React.FC = () => {
   return (
     <Box
       component="footer"
+      id="footer"
       sx={{
         backgroundColor: '#1E2128',
         padding: '40px 0',

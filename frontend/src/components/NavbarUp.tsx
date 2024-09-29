@@ -1,7 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { deleteSession } from '../services/http/index';
+import { deleteSession, getUserProfile } from '../services/http/index';
+import './Navbar.css'; // เปลี่ยนเป็น path ที่ถูกต้อง
+import { Avatar } from '@mui/material';
 
 interface NavbarProps {
   isLoggedIn: boolean;
@@ -11,13 +13,25 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, setIsLoggedIn }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [username, setUsername] = useState<string | null>(null);
 
+  // ใช้ useEffect เพื่อติดตามการเปลี่ยนแปลงของ isLoggedIn
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     if (token) {
       setIsLoggedIn(true);
+      fetchUserProfile();  // เรียก fetchUserProfile ทันทีเมื่อผู้ใช้ล็อกอิน
     }
-  }, [setIsLoggedIn]);
+  }, [isLoggedIn, setIsLoggedIn]); // รัน useEffect เมื่อ isLoggedIn เปลี่ยน
+
+  const fetchUserProfile = async () => {
+    try {
+      const userProfile = await getUserProfile();
+      setUsername(userProfile.Username); // เก็บชื่อผู้ใช้ใน state
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
   const handleLogout = async () => {
     const token = localStorage.getItem('authToken');
@@ -26,8 +40,33 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, setIsLoggedIn }) => {
     }
     localStorage.clear();
     setIsLoggedIn(false);
+    setUsername(null); // ล้างชื่อผู้ใช้เมื่อออกจากระบบ
     navigate('/home');
     window.location.reload();
+  };
+
+  const scrollToContact = () => {
+    const footerElement = document.getElementById('footer');
+    if (footerElement) {
+      footerElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const scrollToFAQ = () => {
+    if (location.pathname !== '/home') {
+      navigate('/home'); 
+      setTimeout(() => {
+        const howItWorksSection = document.getElementById('how-it-works');
+        if (howItWorksSection) {
+          howItWorksSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 300);
+    } else {
+      const howItWorksSection = document.getElementById('how-it-works');
+      if (howItWorksSection) {
+        howItWorksSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
   };
 
   const getButtonStyle = (path: string) => ({
@@ -55,10 +94,10 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, setIsLoggedIn }) => {
           <Button component={Link} to="/home" sx={getButtonStyle('/home')}>
             Home
           </Button>
-          <Button component={Link} to="/contact" sx={getButtonStyle('/contact')}>
+          <Button onClick={scrollToContact} sx={getButtonStyle('/contact')}>
             Contact Us
           </Button>
-          <Button component={Link} to="/faqs" sx={getButtonStyle('/faqs')}>
+          <Button onClick={scrollToFAQ} sx={getButtonStyle('/faqs')}>
             FAQs
           </Button>
           {isLoggedIn && (
@@ -68,17 +107,40 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, setIsLoggedIn }) => {
           )}
         </Box>
         {isLoggedIn ? (
-          <Button 
-            onClick={handleLogout} 
-            sx={{ 
-              backgroundColor: '#6A0DAD',  
-              color: 'white',              
-              marginRight: '20px' 
-            }}
-            variant="contained"
-          >
-            Logout
-          </Button>
+          <>
+            <Box sx={{ display: 'flex', alignItems: 'center', marginRight: '15px' }}>
+              <Typography
+                variant="body1"
+                className="username"
+                style={{ marginRight: '20px', fontWeight: 'bold' }}
+              >
+                Hi, {username}!
+              </Typography>
+              <Avatar
+                sx={{
+                  background: `linear-gradient(120deg,#FF33A1 , #6A0DAD )`,
+                  color: '#fff',
+                  width: 35,
+                  height: 35,
+                  boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)',
+                  fontSize: '1rem',
+                }}
+              >
+                {username ? username.charAt(0).toUpperCase() : ''} {/* ใช้อักษรตัวแรกของชื่อผู้ใช้ */}
+              </Avatar>
+            </Box>
+            <Button 
+              onClick={handleLogout} 
+              sx={{ 
+                backgroundColor: '#6A0DAD',  
+                color: 'white',              
+                marginRight: '5px' 
+              }}
+              variant="contained"
+            >
+              Logout
+            </Button>
+          </>
         ) : (
           <>
             <Button
